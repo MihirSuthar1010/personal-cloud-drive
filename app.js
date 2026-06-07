@@ -498,6 +498,52 @@ function updateProgressBar(percent) {
 }
 
 function setupEventListeners() {
+    // Prank Runaway Login Button logic
+    const loginBtn = document.getElementById('loginBtn');
+    const cloudIllustration = document.getElementById('cloudIllustration');
+    let isButtonFleeing = true;
+
+    if (cloudIllustration) {
+        cloudIllustration.addEventListener('click', function () {
+            isButtonFleeing = !isButtonFleeing;
+            if (isButtonFleeing) {
+                showToast("Prank Mode: Enabled! 😈", "info");
+                const icon = cloudIllustration.querySelector('.main-illustration-icon');
+                if (icon) icon.className = 'fa-solid fa-cloud-arrow-up main-illustration-icon animate-float';
+            } else {
+                showToast("Normal Mode: Locker Unlocked 🔓", "success");
+                if (loginBtn) {
+                    loginBtn.style.transform = 'translate(0, 0)';
+                }
+                const icon = cloudIllustration.querySelector('.main-illustration-icon');
+                if (icon) icon.className = 'fa-solid fa-unlock main-illustration-icon';
+            }
+        });
+    }
+
+    if (loginBtn) {
+        loginBtn.addEventListener('mousemove', function (e) {
+            if (!isButtonFleeing) return;
+
+            const card = document.getElementById('loginCard');
+            if (!card) return;
+
+            const cardRect = card.getBoundingClientRect();
+            const btnRect = loginBtn.getBoundingClientRect();
+
+            const maxShiftX = (cardRect.width / 2) - (btnRect.width / 2) - 30;
+            const maxShiftY = (cardRect.height / 2) - (btnRect.height / 2) - 45;
+
+            let randomX = (Math.random() - 0.5) * 2 * maxShiftX;
+            let randomY = (Math.random() - 0.5) * 2 * maxShiftY;
+
+            if (Math.abs(randomX) < 50) randomX = randomX < 0 ? -70 : 70;
+            if (Math.abs(randomY) < 40) randomY = randomY < 0 ? -60 : 60;
+
+            loginBtn.style.transform = `translate(${randomX}px, ${randomY}px)`;
+        });
+    }
+
     // Password visibility toggle
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('customPassword');
