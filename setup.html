@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mihir's Private Cloud - Setup Helper</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #080B11;
+            --bg-card: rgba(17, 24, 39, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #F3F4F6;
+            --text-secondary: #9CA3AF;
+            --accent-indigo: #6366F1;
+            --accent-green: #10B981;
+            --accent-red: #EF4444;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .setup-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #818CF8, #34D399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .alert-box {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .alert-box i {
+            color: var(--accent-indigo);
+            font-size: 16px;
+            margin-top: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: 0.2s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-indigo);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-indigo) 0%, #8B5CF6 100%);
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s ease;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+        }
+
+        .result-box {
+            margin-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 20px;
+            display: none;
+        }
+
+        .result-box.active {
+            display: block;
+        }
+
+        .token-container {
+            background: rgba(16, 185, 129, 0.05);
+            border: 1px dashed var(--accent-green);
+            padding: 14px;
+            border-radius: 12px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--accent-green);
+            margin-top: 10px;
+            user-select: all;
+            position: relative;
+        }
+
+        .copy-hint {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+    </style>
+    <script src="https://accounts.google.com/gsi/client"></script>
+</head>
+<body>
+    <div class="setup-card">
+        <h1><i class="fa-solid fa-key"></i> Google Refresh Token Generator</h1>
+        <p>This is a one-time utility helper. To allow your Netlify server to connect to Google Drive silently in the background, we need to generate a permanent **Refresh Token** (Key) using OAuth.</p>
+        
+        <div class="alert-box">
+            <i class="fa-solid fa-circle-info"></i>
+            <div>
+                <strong>Security note:</strong> This tool runs 100% locally in your browser. Your client secret is never sent to any third-party server except Google's official OAuth server. You can safely delete this file from your Desktop once you copy the token.
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="clientId">Google OAuth Client ID</label>
+            <input type="text" id="clientId" placeholder="Paste Client ID here (from Google Cloud Console)">
+        </div>
+
+        <div class="form-group">
+            <label for="clientSecret">Google OAuth Client Secret</label>
+            <input type="password" id="clientSecret" placeholder="Paste Client Secret here (from Google Cloud Console)">
+        </div>
+
+        <button class="btn" id="authBtn" onclick="startAuthFlow()">
+            <i class="fa-brands fa-google"></i> Authorize & Generate Key
+        </button>
+
+        <div class="result-box" id="resultBox">
+            <h3><i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> Refresh Token Generated Successfully!</h3>
+            <p>Copy the code block below and save it as your **`GD_REFRESH_TOKEN`** in the Netlify Environment Variables.</p>
+            <div class="token-container" id="tokenOutput">Fetching token...</div>
+            <div class="copy-hint">Double-click the green code block to select and copy the entire key.</div>
+        </div>
+    </div>
+
+    <script>
+        let client;
+
+        function startAuthFlow() {
+            const clientId = document.getElementById('clientId').value.trim();
+            const clientSecret = document.getElementById('clientSecret').value.trim();
+
+            if (!clientId || !clientSecret) {
+                alert("Please fill in both your Google Client ID and Client Secret!");
+                return;
+            }
+
+            // Initialize Google Code client to request offline access code
+            client = google.accounts.oauth2.initCodeClient({
+                client_id: clientId,
+                scope: 'https://www.googleapis.com/auth/drive.file',
+                ux_mode: 'popup',
+                redirect_uri: 'postmessage', // Special Google key allowing postMessage popup exchange
+                callback: async (response) => {
+                    if (response.code) {
+                        // We received the auth code! Now let's exchange it for the Refresh Token
+                        document.getElementById('resultBox').classList.add('active');
+                        document.getElementById('tokenOutput').textContent = "Exchanging code with Google for Refresh Token...";
+                        
+                        try {
+                            const params = new URLSearchParams();
+                            params.append('code', response.code);
+                            params.append('client_id', clientId);
+                            params.append('client_secret', clientSecret);
+                            params.append('redirect_uri', 'postmessage');
+                            params.append('grant_type', 'authorization_code');
+
+                            const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: params.toString()
+                            });
+
+                            if (!tokenResponse.ok) {
+                                const err = await tokenResponse.json();
+                                throw new Error(err.error_description || err.error || "Token exchange failed");
+                            }
+
+                            const data = await tokenResponse.json();
+                            
+                            if (data.refresh_token) {
+                                document.getElementById('tokenOutput').textContent = data.refresh_token;
+                            } else {
+                                document.getElementById('tokenOutput').textContent = "ERROR: Google did not return a Refresh Token. Did you forget to choose 'Offline access' or have you already authorized? Go to Google Account settings > Security > Manage Third-Party Access, remove 'Mihir Private Cloud', and try again.";
+                                document.getElementById('tokenOutput').style.color = 'var(--accent-red)';
+                                document.getElementById('tokenOutput').style.borderColor = 'var(--accent-red)';
+                            }
+
+                        } catch (err) {
+                            console.error(err);
+                            document.getElementById('tokenOutput').textContent = "ERROR: " + err.message;
+                            document.getElementById('tokenOutput').style.color = 'var(--accent-red)';
+                            document.getElementById('tokenOutput').style.borderColor = 'var(--accent-red)';
+                        }
+                    }
+                },
+            });
+
+            client.requestCode();
+        }
+    </script>
+</body>
+</html>

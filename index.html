@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mihir's Private Cloud</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background dynamic glow effects -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-cloud-bolt logo-icon"></i>
+                <h1>Mihir's Private Cloud</h1>
+            </div>
+            <div class="user-profile" id="userProfile" style="display: none;">
+                <span id="userName">Welcome</span>
+                <button id="logoutBtn" class="btn btn-secondary">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="app-main">
+            <!-- Login Card (shown when not authenticated) -->
+            <section class="card glassmorphic" id="loginCard">
+                <div class="login-content">
+                    <div class="cloud-illustration">
+                        <i class="fa-solid fa-cloud-arrow-up main-illustration-icon animate-float"></i>
+                    </div>
+                    <h2>Mihir's Private Cloud</h2>
+                    <p>Enter your custom credentials to unlock your 5 TB online cloud storage.</p>
+                    
+                    <form id="loginForm" class="login-form">
+                        <div class="input-group">
+                            <i class="fa-solid fa-user input-icon"></i>
+                            <input type="text" id="customUsername" placeholder="Username" required autocomplete="username">
+                        </div>
+                        <div class="input-group">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="customPassword" placeholder="Password" required autocomplete="current-password">
+                        </div>
+                        <button type="submit" id="loginBtn" class="btn btn-primary btn-large btn-full-width">
+                            <i class="fa-solid fa-unlock-keyhole"></i> Unlock Cloud Drive
+                        </button>
+                    </form>
+                    
+                    <div class="secure-badge">
+                        <i class="fa-solid fa-shield-halved"></i> Secured by serverless key authentication
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard (shown when authenticated) -->
+            <section class="dashboard-grid" id="dashboard" style="display: none;">
+                <!-- Left panel: Upload and stats -->
+                <div class="left-panel">
+                    <!-- Upload Card -->
+                    <div class="card glassmorphic upload-card">
+                        <h3>Upload Files</h3>
+                        <p class="section-subtitle">Drag & drop or browse your local files</p>
+                        
+                        <div class="drop-zone" id="dropZone">
+                            <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+                            <p class="drop-text">Drag and drop files here or <span class="browse-link">browse</span></p>
+                            <input type="file" id="fileInput" multiple style="display: none;">
+                        </div>
+
+                        <!-- Upload Queue/Progress -->
+                        <div class="upload-progress-container" id="uploadProgressContainer" style="display: none;">
+                            <div class="upload-progress-header">
+                                <span class="file-name-label" id="uploadingFileName">Uploading...</span>
+                                <span class="progress-percent" id="uploadPercent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+                            </div>
+                            <button id="cancelUploadBtn" class="btn btn-text" style="display: none;">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Cloud Details Card -->
+                    <div class="card glassmorphic details-card">
+                        <h3>Storage Info</h3>
+                        <div class="storage-meta">
+                            <div class="info-row">
+                                <span class="info-label">Folder Name:</span>
+                                <span class="info-val highlight-val">Mihir_Privet_Cloud</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Status:</span>
+                                <span class="info-val status-online"><i class="fa-solid fa-circle"></i> Online 24/7</span>
+                            </div>
+                            
+                            <!-- Dynamic Storage Progress Bar -->
+                            <div class="storage-progress-section" style="margin-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px;">
+                                <div class="info-row" style="border: none; padding: 0; margin-bottom: 8px;">
+                                    <span class="info-label"><i class="fa-solid fa-hard-drive"></i> Used Storage:</span>
+                                    <span class="info-val highlight-val" id="storageUsageText">Loading...</span>
+                                </div>
+                                <div class="progress-bar-bg" style="height: 8px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden;">
+                                    <div class="progress-bar-fill" id="storageBarFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-indigo)); border-radius: 4px; transition: width 0.5s ease;"></div>
+                                </div>
+                                <div class="info-row" style="border: none; padding: 0; margin-top: 8px; font-size: 11px;">
+                                    <span class="info-label" id="storageFreeText">Free: -</span>
+                                    <span class="info-label" id="storageTotalText">Total: -</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right panel: File browser -->
+                <div class="right-panel">
+                    <div class="card glassmorphic file-browser-card">
+                        <div class="browser-header">
+                            <h3>Files & Folders</h3>
+                            <button id="refreshBtn" class="btn btn-icon" title="Refresh files">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- Search and filter -->
+                        <div class="filter-bar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="searchInput" placeholder="Search files...">
+                            </div>
+                        </div>
+
+                        <!-- File list container -->
+                        <div class="file-list-wrapper">
+                            <div id="loadingIndicator" class="loading-state">
+                                <div class="spinner"></div>
+                                <p>Fetching files from your cloud...</p>
+                            </div>
+
+                            <div id="emptyState" class="empty-state" style="display: none;">
+                                <i class="fa-regular fa-folder-open empty-icon"></i>
+                                <h4>No files uploaded yet</h4>
+                                <p>Drag and drop a file in the left panel to start uploading to your Mihir_Privet_Cloud!</p>
+                            </div>
+
+                            <div id="fileTableContainer" style="display: none;">
+                                <table class="file-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Size</th>
+                                            <th>Uploaded Date</th>
+                                            <th class="actions-col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fileTableBody">
+                                        <!-- Dynamically inserted files will go here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Made with ❤️ for Mihir's Private Cloud Storage | Hosted securely & free 24/7</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
