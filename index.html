@@ -94,6 +94,43 @@
             <section class="dashboard-grid" id="dashboard" style="display: none;">
                 <!-- Left panel: Upload and stats -->
                 <div class="left-panel">
+                    <!-- Hunter Profile Card -->
+                    <div class="card glassmorphic hunter-card rank-E" id="hunterCard">
+                        <div class="hunter-header">
+                            <div class="hunter-avatar-container">
+                                <i class="fa-solid fa-skull-crossbones hunter-avatar-icon" id="hunterAvatarIcon"></i>
+                            </div>
+                            <div class="hunter-info">
+                                <div class="hunter-name" id="hunterNameText">Mihir</div>
+                                <div class="hunter-title" id="hunterTitleText">Mankind's Weakest Hunter</div>
+                            </div>
+                            <div class="hunter-rank-badge" id="hunterRankBadge">E</div>
+                        </div>
+                        <div class="hunter-stats">
+                            <div class="hunter-stat">
+                                <span class="stat-label">Hunter Level</span>
+                                <span class="stat-value" id="hunterLevelText">Lv. 1</span>
+                            </div>
+                            <div class="hunter-stat">
+                                <span class="stat-label">Shadow Army (Files)</span>
+                                <span class="stat-value" id="hunterFilesText">0</span>
+                            </div>
+                            <div class="hunter-stat">
+                                <span class="stat-label">Mana Power (Storage)</span>
+                                <span class="stat-value" id="hunterManaText">0 Bytes</span>
+                            </div>
+                        </div>
+                        <div class="hunter-progress-container">
+                            <div class="progress-labels">
+                                <span class="progress-label">Raid EXP</span>
+                                <span class="progress-value" id="hunterExpPercentText">0%</span>
+                            </div>
+                            <div class="hunter-progress-bar">
+                                <div class="hunter-progress-fill" id="hunterExpBarFill" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Upload Card -->
                     <div class="card glassmorphic upload-card">
                         <h3>Upload Files</h3>
@@ -205,6 +242,18 @@
         <footer class="app-footer">
             <p>Made By Mihir ❤️ काल भी उसका क्या करे, जो भक्त हो महाकाल का! 🕉️</p>
         </footer>
+    </div>
+
+    <!-- Level Up Screen Overlay (Hidden by default) -->
+    <div class="level-up-overlay" id="levelUpOverlay" style="display: none;">
+        <div class="level-up-box">
+            <div class="level-up-stars">⚡ ⚡ ⚡</div>
+            <div class="level-up-title">LEVEL UP</div>
+            <div class="level-up-level" id="overlayLevelText">Lv. 1</div>
+            <div class="level-up-rank" id="overlayRankText">Power Level Increased!</div>
+            <p>Your Mana and Power have expanded.</p>
+            <button class="btn btn-primary" onclick="closeLevelUpOverlay()">Continue Raid</button>
+        </div>
     </div>
 
     <!-- Toast Notification Banner -->

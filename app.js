@@ -272,7 +272,9 @@ async function fetchFiles() {
 
         let data = await response.json();
         allFiles = data.files || [];
+        localFileCount = allFiles.length;
         renderFileList(allFiles);
+        syncHunterStats();
         fetchStorageQuota();
     } catch (error) {
         console.error("Error fetching files: ", error);
@@ -294,6 +296,8 @@ async function fetchStorageQuota() {
             if (data.storageQuota) {
                 const limit = parseInt(data.storageQuota.limit);
                 const usage = parseInt(data.storageQuota.usage);
+                localStorageUsed = usage;
+                syncHunterStats();
                 const free = limit - usage;
                 
                 let percent = (usage / limit) * 100;
@@ -742,4 +746,153 @@ function showToast(message, type = 'info') {
             container.removeChild(toast);
         }, 300);
     }, 4000);
+}
+
+// ==========================================
+// SOLO LEVELING HUNTER RANK SYSTEM
+// ==========================================
+
+let localFileCount = 0;
+let localStorageUsed = 0;
+
+function syncHunterStats() {
+    updateHunterRank(localFileCount, localStorageUsed);
+}
+
+function updateHunterRank(fileCount, bytesUsed) {
+    const username = sessionStorage.getItem('custom_username') || 'Mihir';
+    const formattedName = username.charAt(0).toUpperCase() + username.slice(1);
+    
+    const nameEl = document.getElementById('hunterNameText');
+    if (nameEl) nameEl.textContent = formattedName;
+
+    // Hunter leveling arpeggio formula
+    const totalVal = Math.sqrt(fileCount * 4) + Math.sqrt(bytesUsed / (1024 * 1024 * 5));
+    const calculatedLvl = Math.max(1, Math.min(99, Math.floor(totalVal) + 1));
+    const xpPercent = Math.round((totalVal - Math.floor(totalVal)) * 100);
+
+    // Rank configuration
+    let rank = 'E';
+    let title = "Mankind's Weakest Hunter";
+    let iconClass = "fa-solid fa-skull-crossbones";
+    let color = "#9ca3af";
+
+    if (calculatedLvl >= 6 && calculatedLvl <= 15) {
+        rank = 'D';
+        title = "Raid Dungeon Porter";
+        iconClass = "fa-solid fa-shield-halved";
+        color = "#10b981";
+    } else if (calculatedLvl >= 16 && calculatedLvl <= 30) {
+        rank = 'C';
+        title = "Strike Force Member";
+        iconClass = "fa-solid fa-user-ninja";
+        color = "#3b82f6";
+    } else if (calculatedLvl >= 31 && calculatedLvl <= 50) {
+        rank = 'B';
+        title = "Elite Raid Team Leader";
+        iconClass = "fa-solid fa-wand-magic-sparkles";
+        color = "#8b5cf6";
+    } else if (calculatedLvl >= 51 && calculatedLvl <= 75) {
+        rank = 'A';
+        title = "Guild Vice-Master";
+        iconClass = "fa-solid fa-bolt";
+        color = "#f59e0b";
+    } else if (calculatedLvl >= 76) {
+        rank = 'S';
+        title = "Shadow Monarch / S-Rank";
+        iconClass = "fa-solid fa-crown";
+        color = "#00f0ff";
+    }
+
+    // Update HTML elements safely
+    const levelEl = document.getElementById('hunterLevelText');
+    const filesEl = document.getElementById('hunterFilesText');
+    const manaEl = document.getElementById('hunterManaText');
+    const xpPercentEl = document.getElementById('hunterExpPercentText');
+    const xpBarFillEl = document.getElementById('hunterExpBarFill');
+    const titleEl = document.getElementById('hunterTitleText');
+    const rankBadgeEl = document.getElementById('hunterRankBadge');
+    const avatarIconEl = document.getElementById('hunterAvatarIcon');
+    const hunterCardEl = document.getElementById('hunterCard');
+
+    if (levelEl) levelEl.textContent = `Lv. ${calculatedLvl}`;
+    if (filesEl) filesEl.textContent = fileCount;
+    if (manaEl) manaEl.textContent = formatBytes(bytesUsed);
+    if (xpPercentEl) xpPercentEl.textContent = `${xpPercent}%`;
+    if (xpBarFillEl) xpBarFillEl.style.width = `${xpPercent}%`;
+    if (titleEl) titleEl.textContent = title;
+    if (rankBadgeEl) rankBadgeEl.textContent = rank;
+
+    if (avatarIconEl) {
+        avatarIconEl.className = `${iconClass} hunter-avatar-icon`;
+        avatarIconEl.style.color = color;
+        avatarIconEl.style.textShadow = `0 0 10px ${color}`;
+    }
+
+    if (hunterCardEl) {
+        hunterCardEl.className = `card glassmorphic hunter-card rank-${rank}`;
+    }
+
+    // Check for level or rank up!
+    const savedLvl = parseInt(localStorage.getItem('hunter_level') || '1');
+    const savedRank = localStorage.getItem('hunter_rank') || 'E';
+
+    // Set defaults if they don't exist
+    if (!localStorage.getItem('hunter_level')) {
+        localStorage.setItem('hunter_level', calculatedLvl);
+        localStorage.setItem('hunter_rank', rank);
+        return;
+    }
+
+    if (calculatedLvl > savedLvl) {
+        triggerLevelUpScreen(calculatedLvl, rank, rank !== savedRank);
+        localStorage.setItem('hunter_level', calculatedLvl);
+        localStorage.setItem('hunter_rank', rank);
+    }
+}
+
+function triggerLevelUpScreen(level, rank, didRankUp) {
+    const overlayLvl = document.getElementById('overlayLevelText');
+    const overlayRank = document.getElementById('overlayRankText');
+    const overlay = document.getElementById('levelUpOverlay');
+
+    if (overlayLvl) overlayLvl.textContent = `Lv. ${level}`;
+    if (overlayRank) overlayRank.textContent = didRankUp ? `Rank ${rank} Increased! ⚡` : `Power Level Increased!`;
+    if (overlay) overlay.style.display = 'flex';
+    
+    playLevelUpSound();
+}
+
+function closeLevelUpOverlay() {
+    const overlay = document.getElementById('levelUpOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function playLevelUpSound() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Chime notes: C4, E4, G4, C5 (major arpeggio)
+        const notes = [261.63, 329.63, 392.00, 523.25];
+        const duration = 0.15; // note duration
+        
+        notes.forEach((freq, index) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * duration);
+            
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime + index * duration);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + index * duration + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(audioCtx.currentTime + index * duration);
+            osc.stop(audioCtx.currentTime + index * duration + duration);
+        });
+    } catch (e) {
+        console.error("Audio failed to play:", e);
+    }
 }
