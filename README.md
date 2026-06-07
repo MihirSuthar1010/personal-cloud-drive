@@ -41,7 +41,7 @@ This is where we tell Vercel what your custom credentials and Google keys are:
 
 1. Open your Vercel Dashboard and click on your **`mihirlocker`** project.
 2. Go to **Settings** > **Environment Variables** (in the tab menu).
-3. Add the following 5 variables:
+3. Add the following 6 variables:
 
 | Key | Value | Description |
 | :--- | :--- | :--- |
@@ -50,6 +50,7 @@ This is where we tell Vercel what your custom credentials and Google keys are:
 | **`GD_CLIENT_ID`** | *Your Google Client ID* | The client ID from Google Cloud Console. |
 | **`GD_CLIENT_SECRET`** | *Your Google Client Secret* | The client secret from Google Cloud Console. |
 | **`GD_REFRESH_TOKEN`** | *Your Google Refresh Token* | The token generated from `setup.html`. |
+| **`RESET_CODE`** | *Your secret recovery code* (e.g. `MAHAKAL_SECRET_777`) | The code used to verify password reset requests. |
 
 4. Click **Save** to apply the changes.
 
