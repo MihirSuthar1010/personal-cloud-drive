@@ -64,7 +64,7 @@ async function checkExistingSession() {
                 refreshAccessToken(savedUser, savedPass);
             }, 45 * 60 * 1000);
         } else {
-            // Saved credentials are invalid (e.g. user changed password on Netlify)
+            // Saved credentials are invalid (e.g. user changed password on Vercel)
             handleLogout();
         }
     } else {
@@ -97,7 +97,7 @@ async function handleCustomLogin(username, password) {
     }
 }
 
-// Contacts Netlify serverless auth endpoint to retrieve a fresh Google token
+// Contacts Vercel serverless auth endpoint to retrieve a fresh Google token
 async function refreshAccessToken(username, password) {
     try {
         const response = await fetch('/api/auth', {
