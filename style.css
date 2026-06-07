@@ -3,19 +3,19 @@
    ========================================== */
 
 :root {
-    --bg-primary: #0A0A0E; 
-    --bg-card: rgba(15, 15, 20, 0.65); /* Translucent dark glass */
+    --bg-primary: #080A10; 
+    --bg-card: rgba(10, 15, 26, 0.65); /* Translucent dark glass */
     --border-color: rgba(255, 255, 255, 0.08); 
-    --border-glow: rgba(239, 68, 68, 0.35); /* Crimson red focus glow */
+    --border-glow: rgba(59, 130, 246, 0.35); /* Blue focus glow */
     
     --text-primary: #F3F4F6; /* White-gray text */
     --text-secondary: #9CA3AF; /* Light gray text */
     --text-muted: #6B7280; 
 
-    --accent-blue: #3B82F6;
-    --accent-indigo: #EF4444; /* Crimson red accent */
-    --accent-pink: #F43F5E;
-    --accent-purple: #B91C1C; 
+    --accent-blue: #00D2FF; /* Cyan */
+    --accent-indigo: #3B82F6; /* Electric blue */
+    --accent-pink: #A855F7; /* Purple */
+    --accent-purple: #4F46E5; /* Royal indigo */
     --accent-green: #10B981;
     --accent-red: #EF4444;
     
@@ -35,7 +35,7 @@
 }
 
 body {
-    background: linear-gradient(rgba(10, 10, 15, 0.65), rgba(10, 10, 15, 0.75)), url('bg.jpg') no-repeat center center fixed;
+    background: linear-gradient(rgba(8, 10, 16, 0.65), rgba(8, 10, 16, 0.75)), url('bg.jpg') no-repeat center center fixed;
     background-size: cover;
     color: var(--text-primary);
     min-height: 100vh;
@@ -45,7 +45,7 @@ body {
     justify-content: center;
 }
 
-/* Background Glowing Blurs (Subtle ambient red lighting behind the cards) */
+/* Background Glowing Blurs (Subtle cyan/indigo ambient lighting behind cards) */
 .bg-glow {
     position: absolute;
     width: 500px;
@@ -60,28 +60,28 @@ body {
 .bg-glow-1 {
     top: -150px;
     left: -150px;
-    background: radial-gradient(circle, rgba(239, 68, 68, 0.6) 0%, rgba(239, 68, 68, 0) 70%); 
+    background: radial-gradient(circle, rgba(0, 210, 255, 0.5) 0%, rgba(0, 210, 255, 0) 70%); 
     animation: floatGlow1 20s infinite alternate ease-in-out;
 }
 
 .bg-glow-2 {
     bottom: -150px;
     right: -150px;
-    background: radial-gradient(circle, rgba(185, 28, 28, 0.5) 0%, rgba(185, 28, 28, 0) 70%); 
+    background: radial-gradient(circle, rgba(79, 70, 229, 0.45) 0%, rgba(79, 70, 229, 0) 70%); 
     animation: floatGlow2 24s infinite alternate-reverse ease-in-out;
 }
 
 .bg-glow-3 {
     top: 40%;
     left: 70%;
-    background: radial-gradient(circle, rgba(244, 63, 94, 0.45) 0%, rgba(244, 63, 94, 0) 70%); 
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(139, 92, 246, 0) 70%); 
     animation: floatGlow3 28s infinite alternate ease-in-out;
 }
 
 .bg-glow-4 {
     bottom: 30%;
     right: 80%;
-    background: radial-gradient(circle, rgba(220, 38, 38, 0.35) 0%, rgba(220, 38, 38, 0) 70%); 
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, rgba(59, 130, 246, 0) 70%); 
     animation: floatGlow4 32s infinite alternate-reverse ease-in-out;
 }
 
@@ -145,7 +145,7 @@ body {
 
 .logo-icon {
     font-size: 24px;
-    background: linear-gradient(135deg, #EF4444, #B91C1C);
+    background: linear-gradient(135deg, #00D2FF, #4F46E5);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -205,7 +205,7 @@ body {
 
 .card:hover {
     border-color: var(--border-glow);
-    box-shadow: 0 12px 40px 0 rgba(239, 68, 68, 0.1), 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+    box-shadow: 0 12px 40px 0 rgba(59, 130, 246, 0.1), 0 8px 32px 0 rgba(0, 0, 0, 0.45);
 }
 
 /* ==========================================
@@ -229,13 +229,13 @@ body {
 .btn-primary {
     background: linear-gradient(135deg, var(--accent-indigo) 0%, var(--accent-purple) 100%);
     color: #ffffff;
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
-    background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.45);
+    background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
 }
 
 .btn-primary:active {
@@ -338,8 +338,8 @@ body {
 
 /* Add an active border glow overlay on hover */
 #loginCard:hover {
-    border-color: rgba(239, 68, 68, 0.4);
-    box-shadow: 0 25px 60px rgba(239, 68, 68, 0.1), 0 20px 50px rgba(0, 0, 0, 0.6);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 25px 60px rgba(59, 130, 246, 0.1), 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
 .login-content {
@@ -354,14 +354,14 @@ body {
     width: 100px;
     height: 100px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.05) 100%);
-    border: 1.5px solid rgba(239, 68, 68, 0.25);
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(79, 70, 229, 0.05) 100%);
+    border: 1.5px solid rgba(59, 130, 246, 0.25);
     display: flex;
     justify-content: center;
     align-items: center;
     margin-bottom: 4px;
     position: relative;
-    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.15);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
 }
 
 /* Glow ring around illustration */
@@ -373,7 +373,7 @@ body {
     right: -4px;
     bottom: -4px;
     border-radius: 50%;
-    border: 1px dashed rgba(239, 68, 68, 0.4);
+    border: 1px dashed rgba(59, 130, 246, 0.4);
     animation: rotateDashed 20s infinite linear;
 }
 
@@ -387,7 +387,7 @@ body {
     background: linear-gradient(135deg, var(--accent-indigo), var(--accent-pink));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 4px 10px rgba(239, 68, 68, 0.4));
+    filter: drop-shadow(0 4px 10px rgba(59, 130, 246, 0.4));
 }
 
 .animate-float {
@@ -404,7 +404,7 @@ body {
     font-size: 28px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    background: linear-gradient(135deg, #ffffff 30%, #fca5a5 70%, #ef4444 100%);
+    background: linear-gradient(135deg, #ffffff 30%, #93c5fd 70%, #3b82f6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
@@ -451,7 +451,7 @@ body {
     outline: none;
     border-color: var(--accent-indigo);
     background: rgba(10, 15, 30, 0.85);
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .input-icon {
@@ -498,20 +498,20 @@ body {
     background: linear-gradient(135deg, var(--accent-indigo) 0%, var(--accent-purple) 50%, var(--accent-pink) 100%);
     background-size: 200% auto;
     border: none;
-    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-primary.btn-large:hover {
     background-position: right center;
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.45), 0 0 15px rgba(244, 63, 94, 0.25);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.45), 0 0 15px rgba(168, 85, 247, 0.25);
     color: #ffffff;
 }
 
 .btn-primary.btn-large:active {
     transform: translateY(-1px) scale(1);
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.35);
 }
 
 /* Sheen reflection sweep effect */
@@ -627,7 +627,7 @@ body {
 .drop-zone:hover,
 .drop-zone.drag-over {
     border-color: var(--accent-indigo);
-    background: rgba(239, 68, 68, 0.05);
+    background: rgba(59, 130, 246, 0.05);
 }
 
 .drop-icon {
@@ -832,12 +832,12 @@ body {
 }
 
 .file-list-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(239, 68, 68, 0.2);
+    background: rgba(59, 130, 246, 0.2);
     border-radius: 3px;
 }
 
 .file-list-wrapper::-webkit-scrollbar-thumb:hover {
-    background: rgba(239, 68, 68, 0.4);
+    background: rgba(59, 130, 246, 0.4);
 }
 
 .file-table {
@@ -854,7 +854,7 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     position: sticky;
     top: 0;
-    background: #121216; /* Dark header to match design */
+    background: #111622; /* Dark header to match design */
     z-index: 10;
 }
 
@@ -977,8 +977,8 @@ body {
 }
 
 .toast {
-    background: rgba(15, 15, 20, 0.95);
-    border: 1px solid rgba(239, 68, 68, 0.15);
+    background: rgba(10, 15, 26, 0.95);
+    border: 1px solid rgba(59, 130, 246, 0.15);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     padding: 16px 20px;
