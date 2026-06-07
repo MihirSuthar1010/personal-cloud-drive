@@ -97,6 +97,27 @@ async function handleCustomLogin(username, password) {
     }
 }
 
+// Silent Login Form Handler for automatic login during typing
+async function attemptSilentLogin(username, password) {
+    const success = await refreshAccessToken(username, password);
+    
+    if (success) {
+        // Save credentials locally for auto-login next time
+        sessionStorage.setItem('custom_username', username);
+        sessionStorage.setItem('custom_password', password);
+        
+        showToast("Access granted! Connecting to your cloud...", "success");
+        showDashboardView();
+        
+        fetchStorageQuota();
+        if (currentFolderId) {
+            fetchFiles();
+        } else {
+            initializeCloudFolder();
+        }
+    }
+}
+
 // Contacts Vercel serverless auth endpoint to retrieve a fresh Google token
 async function refreshAccessToken(username, password) {
     try {
@@ -501,6 +522,7 @@ function setupEventListeners() {
     // Password visibility toggle
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('customPassword');
+    const usernameInput = document.getElementById('customUsername');
     if (togglePassword && passwordInput) {
         togglePassword.addEventListener('click', function () {
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -510,11 +532,33 @@ function setupEventListeners() {
         });
     }
 
-    // Custom Login Form Listener
+    // Debounced Silent Auto-Login during typing
+    let autoLoginTimeout;
+    function triggerAutoLogin() {
+        clearTimeout(autoLoginTimeout);
+        const user = usernameInput ? usernameInput.value.trim() : '';
+        const pass = passwordInput ? passwordInput.value.trim() : '';
+        
+        if (user && pass.length >= 4) {
+            autoLoginTimeout = setTimeout(() => {
+                attemptSilentLogin(user, pass);
+            }, 600);
+        }
+    }
+
+    if (usernameInput) {
+        usernameInput.addEventListener('input', triggerAutoLogin);
+    }
+    if (passwordInput) {
+        passwordInput.addEventListener('input', triggerAutoLogin);
+    }
+
+    // Custom Login Form Listener (runs on Enter key press)
     loginForm.addEventListener('submit', function (e) {
         e.preventDefault();
-        const user = document.getElementById('customUsername').value.trim();
-        const pass = document.getElementById('customPassword').value.trim();
+        clearTimeout(autoLoginTimeout);
+        const user = usernameInput ? usernameInput.value.trim() : '';
+        const pass = passwordInput ? passwordInput.value.trim() : '';
         handleCustomLogin(user, pass);
     });
 
