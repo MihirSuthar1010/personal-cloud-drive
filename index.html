@@ -38,7 +38,8 @@
         <main class="app-main">
             <!-- Login Card (shown when not authenticated) -->
             <section class="card glassmorphic" id="loginCard">
-                <div class="login-content">
+                <!-- Login View -->
+                <div class="login-content" id="loginView">
                     <div class="cloud-illustration">
                         <i class="fa-solid fa-cloud-arrow-up main-illustration-icon animate-float"></i>
                     </div>
@@ -54,7 +55,37 @@
                             <input type="password" id="customPassword" placeholder="Password" required autocomplete="current-password">
                             <i class="fa-solid fa-eye-slash password-toggle-icon" id="togglePassword" title="Show/Hide Password"></i>
                         </div>
+                        <div class="forgot-container">
+                            <a href="#" id="forgotPasswordLink" class="forgot-link">Forgot Password?</a>
+                        </div>
                         <button type="submit" id="loginBtn" style="display: none;"></button>
+                    </form>
+                </div>
+
+                <!-- Forgot Password View -->
+                <div class="login-content" id="forgotView" style="display: none;">
+                    <div class="cloud-illustration">
+                        <i class="fa-solid fa-key main-illustration-icon animate-float"></i>
+                    </div>
+                    <h2>Reset Password</h2>
+                    
+                    <form id="forgotForm" class="login-form">
+                        <div class="input-group">
+                            <i class="fa-solid fa-user input-icon"></i>
+                            <input type="text" id="resetUsername" placeholder="Username" required autocomplete="username">
+                        </div>
+                        <div class="input-group">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="resetNewPassword" placeholder="New Password" required autocomplete="new-password">
+                        </div>
+                        <div class="input-group">
+                            <i class="fa-solid fa-shield-halved input-icon"></i>
+                            <input type="password" id="resetSecretCode" placeholder="Secret Reset Code" required>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary btn-full-width">Reset & Login</button>
+                            <button type="button" id="backToLoginBtn" class="btn btn-secondary btn-full-width">Cancel</button>
+                        </div>
                     </form>
                 </div>
             </section>

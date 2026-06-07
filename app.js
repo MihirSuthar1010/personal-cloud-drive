@@ -562,6 +562,89 @@ function setupEventListeners() {
         handleCustomLogin(user, pass);
     });
 
+    // Forgot Password View Toggles
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const backToLoginBtn = document.getElementById('backToLoginBtn');
+    const loginView = document.getElementById('loginView');
+    const forgotView = document.getElementById('forgotView');
+    const forgotForm = document.getElementById('forgotForm');
+
+    if (forgotPasswordLink && loginView && forgotView) {
+        forgotPasswordLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            clearTimeout(autoLoginTimeout);
+            loginView.style.display = 'none';
+            forgotView.style.display = 'block';
+        });
+    }
+
+    if (backToLoginBtn && loginView && forgotView) {
+        backToLoginBtn.addEventListener('click', function () {
+            forgotView.style.display = 'none';
+            loginView.style.display = 'block';
+        });
+    }
+
+    // Forgot Password Form Submit
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const username = document.getElementById('resetUsername').value.trim();
+            const newPassword = document.getElementById('resetNewPassword').value.trim();
+            const secretCode = document.getElementById('resetSecretCode').value.trim();
+
+            showLoading(true);
+
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'reset',
+                        username,
+                        newPassword,
+                        secretCode
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    showToast(err.error || "Password reset failed.", "error");
+                    showLoading(false);
+                    return;
+                }
+
+                const data = await response.json();
+                accessToken = data.access_token;
+                tokenExpiryTime = Date.now() + (data.expires_in * 1000);
+
+                // Save credentials locally for auto-login next time
+                sessionStorage.setItem('custom_username', username);
+                sessionStorage.setItem('custom_password', newPassword);
+
+                showToast("Password updated and logged in successfully!", "success");
+                showDashboardView();
+
+                // Clear fields
+                forgotForm.reset();
+                forgotView.style.display = 'none';
+                loginView.style.display = 'block';
+
+                fetchStorageQuota();
+                if (currentFolderId) {
+                    fetchFiles();
+                } else {
+                    initializeCloudFolder();
+                }
+
+            } catch (err) {
+                console.error("Password reset error:", err);
+                showToast("Network error during password reset.", "error");
+                showLoading(false);
+            }
+        });
+    }
+
     logoutBtn.addEventListener('click', handleLogout);
     refreshBtn.addEventListener('click', fetchFiles);
 

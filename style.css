@@ -1086,3 +1086,27 @@ body {
         display: none; /* Hide date on tiny mobile */
     }
 }
+
+.forgot-container {
+    width: 100%;
+    text-align: right;
+    margin-top: -10px;
+}
+
+.forgot-link {
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.forgot-link:hover {
+    color: var(--accent-indigo);
+}
+
+.btn-group {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    margin-top: 10px;
+}
