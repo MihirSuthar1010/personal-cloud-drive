@@ -1412,3 +1412,246 @@ body {
     0% { transform: scale(0.7); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
 }
+
+/* ==========================================
+   ACTIVE GATES (TRANSFERS PANEL)
+   ========================================== */
+.transfers-card {
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    background: linear-gradient(135deg, rgba(16, 24, 48, 0.4) 0%, rgba(10, 15, 30, 0.4) 100%) !important;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.transfers-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.transfers-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transfers-header h3 i {
+    color: var(--accent-blue);
+    text-shadow: 0 0 10px var(--accent-blue);
+}
+
+.active-count-badge {
+    background: var(--accent-indigo);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+
+.transfers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.transfers-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.transfers-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.transfer-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.transfer-item.paused {
+    border-color: rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.01);
+}
+
+.transfer-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.transfer-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.transfer-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+.transfer-status-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    text-align: left;
+}
+
+.transfer-item.paused .transfer-status-label {
+    color: #f59e0b;
+}
+
+.transfer-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-transfer-action {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    transition: all 0.2s ease;
+}
+
+.btn-transfer-action:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.btn-transfer-action.btn-pause-resume {
+    color: var(--accent-blue);
+}
+
+.btn-transfer-action.btn-pause-resume:hover {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 8px rgba(0, 210, 255, 0.25);
+}
+
+.btn-transfer-action.btn-pause-resume.is-paused {
+    color: var(--accent-green);
+    animation: pulsePlay 1.5s infinite;
+}
+
+.btn-transfer-action.btn-pause-resume.is-paused:hover {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-transfer-action.btn-cancel {
+    color: var(--accent-red);
+}
+
+.btn-transfer-action.btn-cancel:hover {
+    border-color: var(--accent-red);
+    background: rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.25);
+}
+
+.transfer-progress-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transfer-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.transfer-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s ease;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-indigo));
+}
+
+.transfer-item.active .transfer-progress-fill {
+    position: relative;
+    overflow: hidden;
+}
+
+.transfer-item.active .transfer-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    animation: sweep 1.5s infinite linear;
+    background-size: 200% 100%;
+}
+
+.transfer-item.paused .transfer-progress-fill {
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+    animation: progressPulse 2s infinite ease-in-out;
+}
+
+.transfer-percent {
+    font-size: 11px;
+    font-weight: 600;
+    color: #ffffff;
+    width: 32px;
+    text-align: right;
+}
+
+@keyframes sweep {
+    0% { transform: translate3d(-100%, 0, 0); }
+    100% { transform: translate3d(100%, 0, 0); }
+}
+
+@keyframes progressPulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+@keyframes pulsePlay {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}

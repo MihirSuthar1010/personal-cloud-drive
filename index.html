@@ -140,13 +140,8 @@
                         
                         <div class="drop-zone" id="dropZone">
                             <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
-                            <p class="drop-text" id="dropText">Drag & drop files/folders here or click to upload</p>
-                            <div class="upload-btn-group" style="display: flex; gap: 10px; justify-content: center; margin-top: 10px; z-index: 10; position: relative;">
-                                <button type="button" class="btn btn-secondary btn-sm" id="btnUploadFiles" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;">Browse Files</button>
-                                <button type="button" class="btn btn-secondary btn-sm" id="btnUploadFolder" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;">Browse Folder</button>
-                            </div>
+                            <p class="drop-text" id="dropText">Drag & drop files here or click to browse</p>
                             <input type="file" id="fileInput" multiple style="display: none;">
-                            <input type="file" id="folderInput" webkitdirectory directory multiple style="display: none;">
                         </div>
 
                         <!-- Upload Queue/Progress -->
@@ -159,6 +154,17 @@
                                 <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
                             </div>
                             <button id="cancelUploadBtn" class="btn btn-text" style="display: none;">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Active Gates (Transfers Panel) -->
+                    <div class="card glassmorphic transfers-card" id="transfersCard" style="display: none;">
+                        <div class="transfers-header">
+                            <h3><i class="fa-solid fa-door-open"></i> Active Gates</h3>
+                            <span class="active-count-badge" id="activeTransfersCount">0</span>
+                        </div>
+                        <div class="transfers-list" id="transfersList">
+                            <!-- Dynamic transfer rows will be inserted here -->
                         </div>
                     </div>
 
