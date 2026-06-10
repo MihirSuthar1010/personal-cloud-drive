@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mihir's Private Cloud - Setup Helper</title>
+    <title>AURA's Private Cloud - Setup Helper</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -244,7 +244,7 @@
                             if (data.refresh_token) {
                                 document.getElementById('tokenOutput').textContent = data.refresh_token;
                             } else {
-                                document.getElementById('tokenOutput').textContent = "ERROR: Google did not return a Refresh Token. Did you forget to choose 'Offline access' or have you already authorized? Go to Google Account settings > Security > Manage Third-Party Access, remove 'Mihir Private Cloud', and try again.";
+                                document.getElementById('tokenOutput').textContent = "ERROR: Google did not return a Refresh Token. Did you forget to choose 'Offline access' or have you already authorized? Go to Google Account settings > Security > Manage Third-Party Access, remove 'AURA Private Cloud', and try again.";
                                 document.getElementById('tokenOutput').style.color = 'var(--accent-red)';
                                 document.getElementById('tokenOutput').style.borderColor = 'var(--accent-red)';
                             }
