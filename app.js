@@ -333,6 +333,7 @@ function renderFileList(files) {
         const row = document.createElement('tr');
         const iconClass = getFileIconClass(file.mimeType, file.name);
         const formattedSize = formatBytes(file.size);
+        const escapedName = file.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const formattedDate = new Date(file.createdTime).toLocaleDateString('en-IN', {
             day: 'numeric',
             month: 'short',
@@ -352,6 +353,9 @@ function renderFileList(files) {
             <td>${formattedDate}</td>
             <td class="actions-col">
                 <div class="actions-cell">
+                    <button class="btn-action btn-share-manager" onclick="openCreateShareModal('${file.id}', '${escapedName}', ${file.size})" title="Share File" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.2); color: var(--accent-blue); padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                        <i class="fa-solid fa-share-nodes"></i>
+                    </button>
                     <button class="btn-action btn-download" onclick="downloadFile('${file.id}')" title="Download">
                         <i class="fa-solid fa-download"></i>
                     </button>
@@ -875,6 +879,15 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Share link managers event listeners
+    const manageSharesBtn = document.getElementById('manageSharesBtn');
+    if (manageSharesBtn) {
+        manageSharesBtn.addEventListener('click', () => {
+            document.getElementById('manageSharesModal').style.display = 'flex';
+            loadActiveShares();
+        });
+    }
 }
 
 // Sound feedback system using Web Audio API
@@ -1388,4 +1401,240 @@ function playLevelUpSound() {
     } catch (e) {
         console.error("Audio failed to play:", e);
     }
+}
+
+/* ==========================================
+   GATES OF SHARING (SECURE LINK SHARING)
+   ========================================== */
+
+function openCreateShareModal(fileId, fileName, fileSize) {
+    document.getElementById('shareFileId').value = fileId;
+    document.getElementById('shareFileName').value = fileName;
+    document.getElementById('shareFileSize').value = fileSize;
+
+    document.getElementById('shareModalFileName').textContent = fileName;
+    document.getElementById('shareModalFileSize').textContent = formatBytes(fileSize);
+
+    // Reset inputs
+    document.getElementById('sharePasswordOption').value = '';
+    document.getElementById('shareExpiryOption').value = '0';
+    document.getElementById('shareLimitOption').value = '0';
+
+    document.getElementById('createShareModal').style.display = 'flex';
+}
+
+function closeShareModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+async function handleShareSubmit(event) {
+    event.preventDefault();
+    showLoading(true);
+
+    const fileId = document.getElementById('shareFileId').value;
+    const fileName = document.getElementById('shareFileName').value;
+    const fileSize = parseInt(document.getElementById('shareFileSize').value || '0');
+    const passwordProtection = document.getElementById('sharePasswordOption').value.trim();
+    const expiresHours = parseInt(document.getElementById('shareExpiryOption').value);
+    const maxDownloads = parseInt(document.getElementById('shareLimitOption').value);
+
+    const username = sessionStorage.getItem('custom_username');
+    const password = sessionStorage.getItem('custom_password');
+
+    try {
+        const response = await fetch('/api/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username,
+                password,
+                action: 'create',
+                fileId,
+                fileName,
+                fileSize,
+                passwordProtection: passwordProtection || null,
+                expiresHours,
+                maxDownloads: maxDownloads || null
+            })
+        });
+
+        const data = await response.json();
+        showLoading(false);
+
+        if (!response.ok) {
+            showToast(data.error || "Failed to create access gate link.", "error");
+            return;
+        }
+
+        // Close form modal
+        closeShareModal('createShareModal');
+
+        // Generate full public share URL
+        const shareUrl = `${window.location.origin}/share.html?id=${data.shareId}`;
+
+        // Prompt user to copy
+        showShareLinkPrompt(shareUrl, fileName);
+
+    } catch (err) {
+        console.error(err);
+        showLoading(false);
+        showToast("Network connection error.", "error");
+    }
+}
+
+function showShareLinkPrompt(shareUrl, fileName) {
+    // Generate a sleek copy dialog modal using custom alerts or prompt
+    const tempInput = document.createElement('input');
+    document.body.appendChild(tempInput);
+    tempInput.value = shareUrl;
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+
+    // Audio chime cue
+    playTransferSound('success');
+
+    // Display custom modal alert
+    alert(`Access Gate Created for: ${fileName}\n\nThe secure sharing link has been copied to your clipboard:\n\n${shareUrl}`);
+}
+
+async function loadActiveShares() {
+    const listContainer = document.getElementById('activeSharesList');
+    const loader = document.getElementById('sharesLoadingIndicator');
+    const emptyState = document.getElementById('sharesEmptyState');
+    const container = document.getElementById('sharesListContainer');
+
+    listContainer.innerHTML = '';
+    loader.style.display = 'block';
+    emptyState.style.display = 'none';
+    container.style.display = 'none';
+
+    const username = sessionStorage.getItem('custom_username');
+    const password = sessionStorage.getItem('custom_password');
+
+    try {
+        const response = await fetch('/api/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, action: 'list' })
+        });
+
+        const data = await response.json();
+        loader.style.display = 'none';
+
+        if (!response.ok) {
+            showToast(data.error || "Failed to load sharing links.", "error");
+            return;
+        }
+
+        const shares = data.shares || {};
+        const sids = Object.keys(shares);
+
+        if (sids.length === 0) {
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        container.style.display = 'block';
+        sids.forEach(sid => {
+            const share = shares[sid];
+            const row = document.createElement('div');
+            row.className = 'share-row';
+
+            const shareUrl = `${window.location.origin}/share.html?id=${sid}`;
+
+            // Expiry label
+            let expiryText = 'Never Expires';
+            if (share.expiresAt) {
+                const diff = share.expiresAt - Date.now();
+                if (diff > 0) {
+                    const hrs = Math.ceil(diff / (60 * 60 * 1000));
+                    expiryText = `Expires in ${hrs}h`;
+                } else {
+                    expiryText = 'Expired';
+                }
+            }
+            if (share.firstDownloadAt) {
+                const diff = (share.firstDownloadAt + 15 * 60 * 1000) - Date.now();
+                if (diff > 0) {
+                    const mins = Math.ceil(diff / (60 * 1000));
+                    expiryText = `Grace window: ${mins}m left`;
+                } else {
+                    expiryText = 'Expired (Window)';
+                }
+            }
+
+            row.innerHTML = `
+                <div class="share-row-info">
+                    <div class="share-row-name" title="${share.fileName}">${share.fileName}</div>
+                    <div class="share-row-meta">
+                        <span><i class="fa-solid fa-hard-drive"></i> ${formatBytes(share.fileSize)}</span>
+                        <span><i class="fa-solid fa-clock"></i> ${expiryText}</span>
+                        ${share.password ? '<span><i class="fa-solid fa-key"></i> Key Active</span>' : ''}
+                        ${share.maxDownloads ? `<span><i class="fa-solid fa-download"></i> 1-Time Gate</span>` : ''}
+                    </div>
+                </div>
+                <div class="share-row-actions">
+                    <button class="btn btn-icon btn-share-manager" onclick="copyToClipboard('${shareUrl}')" title="Copy sharing link">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                    <button class="btn btn-icon btn-action btn-delete" onclick="revokeShare('${sid}')" title="Revoke sharing gate" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: var(--accent-red); padding: 4px 8px; border-radius: 6px;">
+                        <i class="fa-solid fa-ban"></i>
+                    </button>
+                </div>
+            `;
+            listContainer.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error(err);
+        loader.style.display = 'none';
+        showToast("Error loading active links.", "error");
+    }
+}
+
+async function revokeShare(shareId) {
+    if (!confirm("Are you sure you want to permanently revoke this access gate link? It will no longer work for anyone.")) {
+        return;
+    }
+
+    showLoading(true);
+    const username = sessionStorage.getItem('custom_username');
+    const password = sessionStorage.getItem('custom_password');
+
+    try {
+        const response = await fetch('/api/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, action: 'delete', shareId })
+        });
+
+        showLoading(false);
+        if (!response.ok) {
+            const data = await response.json();
+            showToast(data.error || "Failed to revoke share.", "error");
+            return;
+        }
+
+        showToast("Access gate revoked successfully.", "success");
+        loadActiveShares(); // Refresh the list
+
+    } catch (err) {
+        console.error(err);
+        showLoading(false);
+        showToast("Error communicating with server.", "error");
+    }
+}
+
+function copyToClipboard(text) {
+    const tempInput = document.createElement('input');
+    document.body.appendChild(tempInput);
+    tempInput.value = text;
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+    showToast("Sharing link copied to clipboard!", "success");
 }

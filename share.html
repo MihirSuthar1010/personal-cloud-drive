@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA's Private Locker - Secure Share Gateway</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #030712;
+            --card-bg: rgba(17, 24, 39, 0.45);
+            --border-color: rgba(99, 102, 241, 0.15);
+            --accent-cyan: #00F0FF;
+            --accent-blue: #6366F1;
+            --accent-purple: #8B5CF6;
+            --text-primary: #F3F4F6;
+            --text-secondary: #9CA3AF;
+            --glow-color: rgba(0, 240, 255, 0.25);
+            --error-color: #EF4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(3, 7, 18, 0.5) 0px, transparent 100%);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .portal-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px 30px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), 
+                        0 0 20px rgba(99, 102, 241, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            text-align: center;
+            position: relative;
+            transition: all 0.4s ease;
+        }
+
+        /* Neon portal ring decoration */
+        .portal-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-purple));
+            border-radius: 26px;
+            z-index: -1;
+            opacity: 0.12;
+            transition: opacity 0.3s ease;
+        }
+
+        .portal-container.glowing::before {
+            opacity: 0.28;
+        }
+
+        .aura-logo {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, #FFF 30%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .aura-logo i {
+            color: var(--accent-cyan);
+            filter: drop-shadow(0 0 8px var(--glow-color));
+        }
+
+        .gate-icon-wrapper {
+            margin: 0 auto 24px;
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: rgba(0, 240, 255, 0.04);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+
+        .gate-icon-wrapper i {
+            font-size: 36px;
+            color: var(--accent-cyan);
+            filter: drop-shadow(0 0 10px var(--glow-color));
+        }
+
+        /* Pulsing border animation */
+        .gate-icon-wrapper::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1px solid var(--accent-cyan);
+            opacity: 0.3;
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { opacity: 0.2; }
+            100% { transform: scale(1.25); opacity: 0; }
+        }
+
+        .file-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            word-break: break-all;
+            line-height: 1.4;
+        }
+
+        .file-meta {
+            color: var(--text-secondary);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .file-meta span {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .btn-download {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 100%);
+            color: #030712;
+            font-size: 15px;
+            font-weight: 700;
+            padding: 15px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px var(--glow-color);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 240, 255, 0.45);
+        }
+
+        /* Password Form */
+        .password-form {
+            display: none;
+            text-align: left;
+        }
+
+        .password-form.active {
+            display: block;
+        }
+
+        .password-label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .password-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 14px 14px 42px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .password-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.1);
+        }
+
+        /* Error Banner */
+        .error-banner {
+            display: none;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            animation: shake 0.4s ease;
+        }
+
+        .error-banner.active {
+            display: flex;
+        }
+
+        .error-banner i {
+            color: var(--error-color);
+            font-size: 18px;
+        }
+
+        .error-text {
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        /* Loading Spinner */
+        .loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            width: 45px;
+            height: 45px;
+            border: 3px solid rgba(0, 240, 255, 0.1);
+            border-top: 3px solid var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .info-card {
+            display: none;
+        }
+
+        .info-card.active {
+            display: block;
+        }
+
+        .expired-box {
+            display: none;
+        }
+
+        .expired-box.active {
+            display: block;
+        }
+
+        .expired-icon {
+            color: var(--error-color) !important;
+            filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.3)) !important;
+        }
+
+        .expired-circle {
+            background: rgba(239, 68, 68, 0.04) !important;
+            border-color: rgba(239, 68, 68, 0.15) !important;
+        }
+
+        .expired-circle::after {
+            border-color: var(--error-color) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="portal-container" id="portalContainer">
+        <div class="aura-logo">
+            <i class="fa-solid fa-cloud-bolt"></i> AURA Share Gate
+        </div>
+
+        <!-- 1. General Error Banner -->
+        <div class="error-banner" id="errorBanner">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <div class="error-text" id="errorText">An error occurred while accessing this gate.</div>
+        </div>
+
+        <!-- 2. Loading State -->
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <div class="loader-text">Opening secure connection gate...</div>
+        </div>
+
+        <!-- 3. Password Verification Gate -->
+        <div class="password-form" id="passwordForm">
+            <div class="gate-icon-wrapper">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h2 class="file-title" id="pwdFileTitle">Protected File</h2>
+            <div class="file-meta" style="margin-bottom: 24px;">
+                <span id="pwdFileSize">0 KB</span>
+                <span>Password Required</span>
+            </div>
+            
+            <div class="input-group">
+                <label class="password-label" for="sharePassword">Enter Gate Access Key</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-key"></i>
+                    <input type="password" class="password-input" id="sharePassword" placeholder="Type password here...">
+                </div>
+                <button class="btn-download" onclick="submitPassword()">
+                    Verify & Unlock <i class="fa-solid fa-unlock-keyhole"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. Active File Download Info Card -->
+        <div class="info-card" id="infoCard">
+            <div class="gate-icon-wrapper" id="fileIconWrapper">
+                <i class="fa-solid fa-file-arrow-down" id="fileIcon"></i>
+            </div>
+            <h2 class="file-title" id="fileTitle">File_Name.zip</h2>
+            <div class="file-meta">
+                <span id="fileSize">0 KB</span>
+                <span>Active Link</span>
+            </div>
+            <a href="#" class="btn-download" id="downloadBtn" target="_blank" onclick="trackDownload()">
+                Download File <i class="fa-solid fa-download"></i>
+            </a>
+        </div>
+
+        <!-- 5. Expired Link / Gate Closed Box -->
+        <div class="expired-box" id="expiredBox">
+            <div class="gate-icon-wrapper expired-circle">
+                <i class="fa-solid fa-circle-xmark expired-icon"></i>
+            </div>
+            <h2 class="file-title">Access Gate Closed</h2>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-top: 10px; margin-bottom: 20px; line-height: 1.5;">
+                This link has expired, reached its download limit, or has been revoked by the owner.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/share';
+        const urlParams = new URLSearchParams(window.location.search);
+        const shareId = urlParams.get('id');
+
+        let savedPassword = '';
+
+        window.onload = function() {
+            if (!shareId) {
+                showError("Invalid link: Share ID is missing from the address bar.");
+                return;
+            }
+            verifyShareLink();
+        };
+
+        async function verifyShareLink(pwd = '') {
+            showLoading(true);
+            hideError();
+
+            try {
+                let url = `${API_URL}?id=${shareId}`;
+                if (pwd) {
+                    url += `&password=${encodeURIComponent(pwd)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // Incorrect password or password required
+                        showLoading(false);
+                        if (pwd) {
+                            showError(data.error || "Incorrect password!");
+                        }
+                        showPasswordForm(true, data.fileName, data.fileSize);
+                    } else {
+                        // Expired, missing, or 404
+                        showLoading(false);
+                        showExpired();
+                    }
+                    return;
+                }
+
+                // If valid response
+                showLoading(false);
+                showPasswordForm(false);
+                
+                // Save correct password if verified
+                if (pwd) savedPassword = pwd;
+
+                showFileCard(data.fileName, data.fileSize, data.downloadUrl);
+
+            } catch (err) {
+                console.error(err);
+                showLoading(false);
+                showError("Network connection failed. Please try again.");
+            }
+        }
+
+        function submitPassword() {
+            const pwdInput = document.getElementById('sharePassword').value.trim();
+            if (!pwdInput) {
+                alert("Please enter the password!");
+                return;
+            }
+            verifyShareLink(pwdInput);
+        }
+
+        // Trigger verify on Enter key
+        document.getElementById('sharePassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitPassword();
+            }
+        });
+
+        function showLoading(show) {
+            document.getElementById('loader').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(msg) {
+            const banner = document.getElementById('errorBanner');
+            document.getElementById('errorText').textContent = msg;
+            banner.classList.add('active');
+        }
+
+        function hideError() {
+            document.getElementById('errorBanner').classList.remove('active');
+        }
+
+        function showPasswordForm(show, name = '', size = 0) {
+            const form = document.getElementById('passwordForm');
+            if (show) {
+                form.classList.add('active');
+                document.getElementById('pwdFileTitle').textContent = name;
+                document.getElementById('pwdFileSize').textContent = formatBytes(size);
+                document.getElementById('portalContainer').classList.remove('glowing');
+            } else {
+                form.classList.remove('active');
+            }
+        }
+
+        function showFileCard(name, size, downloadUrl) {
+            const card = document.getElementById('infoCard');
+            card.classList.add('active');
+            
+            document.getElementById('fileTitle').textContent = name;
+            document.getElementById('fileSize').textContent = formatBytes(size);
+            
+            const btn = document.getElementById('downloadBtn');
+            btn.href = downloadUrl;
+
+            // Set file type icon
+            setFileIcon(name);
+
+            // Turn portal container glow ON
+            document.getElementById('portalContainer').classList.add('glowing');
+        }
+
+        function showExpired() {
+            document.getElementById('expiredBox').classList.add('active');
+            document.getElementById('portalContainer').classList.remove('glowing');
+        }
+
+        function setFileIcon(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            const icon = document.getElementById('fileIcon');
+            const wrapper = document.getElementById('fileIconWrapper');
+            
+            // Standard icons
+            let iconClass = 'fa-file-arrow-down';
+            let color = 'var(--accent-cyan)';
+            
+            if (['mp3', 'wav', 'ogg', 'flac'].includes(ext)) {
+                iconClass = 'fa-file-audio';
+            } else if (['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext)) {
+                iconClass = 'fa-file-video';
+            } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
+                iconClass = 'fa-file-image';
+            } else if (['zip', 'rar', 'tar', 'gz', '7z'].includes(ext)) {
+                iconClass = 'fa-file-zipper';
+            } else if (['pdf'].includes(ext)) {
+                iconClass = 'fa-file-pdf';
+            } else if (['txt', 'md', 'doc', 'docx'].includes(ext)) {
+                iconClass = 'fa-file-lines';
+            }
+
+            icon.className = `fa-solid ${iconClass}`;
+        }
+
+        function trackDownload() {
+            // Optional: You can trigger a small UI state change after user clicks download
+            // (e.g. tell them that the single-use retry window has started).
+            console.log("Download initiated.");
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

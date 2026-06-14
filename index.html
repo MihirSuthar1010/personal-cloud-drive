@@ -204,9 +204,14 @@
                     <div class="card glassmorphic file-browser-card">
                         <div class="browser-header">
                             <h3>Files & Folders</h3>
-                            <button id="refreshBtn" class="btn btn-icon" title="Refresh files">
-                                <i class="fa-solid fa-rotate-right"></i>
-                            </button>
+                            <div class="browser-actions" style="display: flex; gap: 8px;">
+                                <button id="manageSharesBtn" class="btn btn-secondary btn-share-manager" title="Manage active shares">
+                                    <i class="fa-solid fa-share-nodes"></i> Active Gates
+                                </button>
+                                <button id="refreshBtn" class="btn btn-icon" title="Refresh files">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Search and filter -->
@@ -271,6 +276,84 @@
 
     <!-- Toast Notification Banner -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Create Share Modal -->
+    <div class="modal-overlay" id="createShareModal" style="display: none;">
+        <div class="modal-content glassmorphic modal-share-creation">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-share-nodes"></i> Create Access Gate</h3>
+                <button class="btn-close-modal" onclick="closeShareModal('createShareModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="share-file-info">
+                    <i class="fa-solid fa-file-arrow-down file-preview-icon"></i>
+                    <div>
+                        <h4 id="shareModalFileName">-</h4>
+                        <p id="shareModalFileSize">-</p>
+                    </div>
+                </div>
+                
+                <form id="shareCreationForm" onsubmit="handleShareSubmit(event)">
+                    <input type="hidden" id="shareFileId">
+                    <input type="hidden" id="shareFileName">
+                    <input type="hidden" id="shareFileSize">
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="sharePasswordOption" class="modal-label"><i class="fa-solid fa-key"></i> Password Key (Optional)</label>
+                        <input type="text" id="sharePasswordOption" class="modal-input" placeholder="Leave empty for public access...">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="shareExpiryOption" class="modal-label"><i class="fa-solid fa-clock"></i> Link Expiration</label>
+                        <select id="shareExpiryOption" class="modal-select">
+                            <option value="0">Never Expire</option>
+                            <option value="1">1 Hour</option>
+                            <option value="24">1 Day (24 Hours)</option>
+                            <option value="168">7 Days (1 Week)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="shareLimitOption" class="modal-label"><i class="fa-solid fa-download"></i> Max Downloads (1-Time self-destruct)</label>
+                        <select id="shareLimitOption" class="modal-select">
+                            <option value="0">Unlimited Downloads</option>
+                            <option value="1">1-Time Download (15m Retry Window)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full-width" style="margin-top: 15px;">
+                        Create Share Link <i class="fa-solid fa-plus"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Shares Modal -->
+    <div class="modal-overlay" id="manageSharesModal" style="display: none;">
+        <div class="modal-content glassmorphic modal-share-manager">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-share-nodes"></i> Active Sharing Gates</h3>
+                <button class="btn-close-modal" onclick="closeShareModal('manageSharesModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="sharesLoadingIndicator" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading active gates...</p>
+                </div>
+                <div id="sharesEmptyState" class="empty-state" style="display: none;">
+                    <i class="fa-solid fa-link-slash empty-icon"></i>
+                    <h4>No active sharing gates</h4>
+                    <p>Share a file to generate secure download links.</p>
+                </div>
+                <div class="shares-list-container" id="sharesListContainer" style="display: none;">
+                    <div class="shares-list" id="activeSharesList">
+                        <!-- Share rows will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
