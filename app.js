@@ -493,20 +493,60 @@ async function deleteFile(fileId, fileName) {
     try {
         await ensureValidToken();
 
+        // 1. Attempt to move the file/folder to Trash (Standard Safe Delete)
         let response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${accessToken}` }
+            method: 'PATCH',
+            headers: { 
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ trashed: true })
         });
 
+        let errorMsg = "";
+        
         if (response.ok) {
-            showToast(`Deleted successfully: ${fileName}`, "success");
+            showToast(`Moved to trash successfully: ${fileName}`, "success");
             fetchFiles();
+            return;
         } else {
-            throw new Error("Delete API call failed");
+            // Read Google API error message
+            try {
+                let errData = await response.json();
+                errorMsg = errData.error && errData.error.message ? errData.error.message : response.statusText;
+            } catch (e) {
+                errorMsg = response.statusText;
+            }
+            console.warn(`Trash request failed: ${errorMsg}. Falling back to permanent delete...`);
+            
+            // 2. Fallback to permanent DELETE
+            let deleteResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+
+            if (deleteResponse.ok) {
+                showToast(`Permanently deleted: ${fileName}`, "success");
+                fetchFiles();
+            } else {
+                let deleteErrorMsg = "";
+                try {
+                    let errData = await deleteResponse.json();
+                    deleteErrorMsg = errData.error && errData.error.message ? errData.error.message : deleteResponse.statusText;
+                } catch (e) {
+                    deleteErrorMsg = deleteResponse.statusText;
+                }
+                
+                // If it is a permission issue, show a helpful message about regenerating token/scope
+                if (deleteResponse.status === 403 || deleteErrorMsg.toLowerCase().includes("permission") || deleteErrorMsg.toLowerCase().includes("insufficient")) {
+                    throw new Error(`Insufficient permissions to delete this file/folder. Please run setup.html to update your Google Drive token with elevated permissions.`);
+                }
+                throw new Error(deleteErrorMsg);
+            }
         }
     } catch (err) {
         console.error("Delete failed: ", err);
-        showToast("Failed to delete file.", "error");
+        showToast(`Failed to delete: ${err.message || "Unknown error"}`, "error");
     }
 }
 

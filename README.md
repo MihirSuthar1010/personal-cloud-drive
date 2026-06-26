@@ -14,7 +14,7 @@ If you already did this in the previous step, you can use the same Client ID and
 3. Search for **Google Drive API** and click **Enable**.
 4. Go to **Audience** (or **OAuth consent screen**) in the left sidebar:
    * Select **External**, name it `Mihir Private Cloud`, set your email, and save.
-   * Add the scope `drive.file` (View and manage Google Drive files that you open/create with this app).
+   * Add the scope `drive` (See, edit, create, and delete all your Google Drive files).
    * In the **Test users** section, add your Gmail address: `mihirsuthar.tec@gmail.com`.
 5. Go to **Credentials**:
    * Click **+ Create Credentials** > **OAuth Client ID** > **Web Application**.

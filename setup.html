@@ -211,7 +211,7 @@
             // Initialize Google Code client to request offline access code
             client = google.accounts.oauth2.initCodeClient({
                 client_id: clientId,
-                scope: 'https://www.googleapis.com/auth/drive.file',
+                scope: 'https://www.googleapis.com/auth/drive',
                 ux_mode: 'popup',
                 redirect_uri: 'postmessage', // Special Google key allowing postMessage popup exchange
                 callback: async (response) => {
