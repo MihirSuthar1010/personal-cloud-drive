@@ -20,7 +20,7 @@ If you already did this in the previous step, you can use the same Client ID and
    * Click **+ Create Credentials** > **OAuth Client ID** > **Web Application**.
    * Under **Authorized JavaScript origins**, click **+ Add URI** and add:
      - `http://localhost:3000`
-     - `https://mihirlocker.vercel.app` (your Vercel website link)
+     - `https://auralocker.vercel.app` (your Vercel website link)
 6. Click **Create** and copy both the **Client ID** and the **Client Secret**.
 
 ---
@@ -39,7 +39,7 @@ To get the permanent Google Drive "Key" for your Vercel server:
 ### STEP 3: Setup Environment Variables in Vercel
 This is where we tell Vercel what your custom credentials and Google keys are:
 
-1. Open your Vercel Dashboard and click on your **`mihirlocker`** project.
+1. Open your Vercel Dashboard and click on your **`auralocker`** project.
 2. Go to **Settings** > **Environment Variables** (in the tab menu).
 3. Add the following 6 variables:
 
@@ -59,5 +59,5 @@ This is where we tell Vercel what your custom credentials and Google keys are:
 ### STEP 4: Deploy the Project to Vercel
 Since this repository is connected to Vercel:
 1. Any code changes pushed to the `main` branch of your GitHub repository will automatically trigger a new deployment on Vercel.
-2. Once deployed, open your Vercel URL (e.g., `https://mihirlocker.vercel.app`).
+2. Once deployed, open your Vercel URL (e.g., `https://auralocker.vercel.app`).
 3. Type your custom username and password, click **Unlock Cloud Drive**, and enjoy your 100% private 24/7 personal cloud storage!
