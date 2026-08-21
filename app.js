@@ -550,9 +550,142 @@ async function deleteFile(fileId, fileName) {
     }
 }
 
-// Handle Direct Download via access_token (works without Google cookies)
-// Handle Direct Download via native browser streaming (supports large files and Google Workspace exports)
-// Chunked Downloader with Pause/Resume/Cancel
+// Recursively list all files in a Google Drive folder
+async function fetchAllFilesRecursively(folderId, relativePath = "") {
+    await ensureValidToken();
+    let filesList = [];
+    
+    let response = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+            `'${folderId}' in parents and trashed = false`
+        )}&fields=files(id,name,mimeType,size)`,
+        {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        }
+    );
+    
+    if (!response.ok) throw new Error("Failed to list files inside folder");
+    
+    const data = await response.json();
+    const items = data.files || [];
+    
+    for (const item of items) {
+        if (item.mimeType === 'application/vnd.google-apps.folder') {
+            const subFiles = await fetchAllFilesRecursively(item.id, relativePath + item.name + "/");
+            filesList.push(...subFiles);
+        } else {
+            item.relativePath = relativePath + item.name;
+            filesList.push(item);
+        }
+    }
+    
+    return filesList;
+}
+
+// Download Folder as ZIP using JSZip
+async function downloadFolderAsZip(folderId, folderName) {
+    const transferId = 'folder-' + Date.now();
+    renderTransferItem(transferId, `${folderName}.zip`, 'download', 0);
+    updateTransferProgressUI(transferId, 5, `<i class="fa-solid fa-spinner fa-spin"></i> Scanning folder...`);
+    
+    activeTransfers[transferId] = {
+        type: 'download',
+        fileName: `${folderName}.zip`,
+        fileId: folderId,
+        size: 0,
+        offset: 0,
+        paused: false,
+        canceled: false,
+        xhr: null
+    };
+
+    try {
+        await ensureValidToken();
+        const filesList = await fetchAllFilesRecursively(folderId, "");
+        
+        if (filesList.length === 0) {
+            showToast(`Folder '${folderName}' is empty.`, "warning");
+            removeTransfer(transferId);
+            return;
+        }
+
+        if (typeof JSZip === 'undefined') {
+            showToast("Loading ZIP library...", "info");
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (typeof JSZip === 'undefined') {
+                throw new Error("JSZip is not available. Please refresh the page.");
+            }
+        }
+
+        const zip = new JSZip();
+        const googleMimeTypeExports = {
+            'application/vnd.google-apps.document': { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' },
+            'application/vnd.google-apps.spreadsheet': { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ext: 'xlsx' },
+            'application/vnd.google-apps.presentation': { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ext: 'pptx' },
+            'application/vnd.google-apps.drawing': { mime: 'image/png', ext: 'png' }
+        };
+
+        for (let i = 0; i < filesList.length; i++) {
+            if (activeTransfers[transferId]?.canceled) return;
+            
+            const subFile = filesList[i];
+            const currentPercent = Math.min(70, Math.round(((i) / filesList.length) * 70));
+            updateTransferProgressUI(transferId, currentPercent, `<i class="fa-solid fa-arrow-down"></i> [${i + 1}/${filesList.length}] ${subFile.name}`);
+            
+            await ensureValidToken();
+            let fileUrl = `https://www.googleapis.com/drive/v3/files/${subFile.id}?alt=media`;
+            let finalPath = subFile.relativePath;
+
+            if (subFile.mimeType && googleMimeTypeExports[subFile.mimeType]) {
+                const exportConfig = googleMimeTypeExports[subFile.mimeType];
+                fileUrl = `https://www.googleapis.com/drive/v3/files/${subFile.id}/export?mimeType=${encodeURIComponent(exportConfig.mime)}`;
+                if (!finalPath.toLowerCase().endsWith('.' + exportConfig.ext)) {
+                    finalPath = `${finalPath}.${exportConfig.ext}`;
+                }
+            }
+
+            const fileRes = await fetch(fileUrl, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+
+            if (!fileRes.ok) throw new Error(`Failed to download ${subFile.name}`);
+            const fileBlob = await fileRes.blob();
+            zip.file(finalPath, fileBlob);
+        }
+
+        if (activeTransfers[transferId]?.canceled) return;
+
+        updateTransferProgressUI(transferId, 75, `<i class="fa-solid fa-file-zipper"></i> Packaging ZIP...`);
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' }, (metadata) => {
+            const zippingPercent = Math.min(99, 70 + Math.round(metadata.percent * 0.29));
+            updateTransferProgressUI(transferId, zippingPercent, `<i class="fa-solid fa-file-zipper"></i> Compressing (${Math.round(metadata.percent)}%)...`);
+        });
+
+        updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> Completed`);
+        playTransferSound('success');
+
+        const zipUrl = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = zipUrl;
+        a.download = `${folderName}.zip`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(zipUrl);
+
+        showToast(`Folder '${folderName}' downloaded successfully as ZIP! 📁`, "success");
+        setTimeout(() => removeTransfer(transferId), 1500);
+
+    } catch (err) {
+        console.error("Folder download failed: ", err);
+        showToast(`Folder download failed: ${err.message || "Unknown error"}`, "error");
+        removeTransfer(transferId);
+    }
+}
+
+// Download File via modern onprogress streaming (supports all formats & workspace exports)
 async function downloadFile(fileId) {
     const file = allFiles.find(f => f.id === fileId);
     let fileName = file ? file.name : "download";
@@ -560,16 +693,15 @@ async function downloadFile(fileId) {
     const fileSize = file && file.size ? parseInt(file.size) : 0;
     
     if (mimeType === 'application/vnd.google-apps.folder') {
-        showToast("Folders cannot be downloaded directly.", "warning");
+        downloadFolderAsZip(fileId, fileName);
         return;
     }
     
-    // Suggest native browser download for very large files (>200MB) to prevent tab crash
+    // Suggest native browser download for very large files (>200MB) to prevent tab memory limits
     if (fileSize > 200 * 1024 * 1024) {
         const useNative = confirm(
             `File size is very large (${formatBytes(fileSize)}).\n\n` +
-            `To prevent browser tab crash, we recommend using Browser-Native Download.\n` +
-            `Browser download managers also have their own Pause/Resume/Cancel controls.\n\n` +
+            `To prevent browser tab memory limits, we recommend using Browser-Native Download.\n\n` +
             `Click OK to download natively in your browser.\n` +
             `Click CANCEL to download inside the app (Active Gates).`
         );
@@ -581,7 +713,6 @@ async function downloadFile(fileId) {
     
     const transferId = 'download-' + Date.now();
     
-    // Register download state
     activeTransfers[transferId] = {
         type: 'download',
         fileName: fileName,
@@ -591,14 +722,10 @@ async function downloadFile(fileId) {
         offset: 0,
         paused: false,
         canceled: false,
-        xhr: null,
-        chunks: [],
-        chunkSize: 5 * 1024 * 1024 // 5MB chunks
+        xhr: null
     };
     
-    // Render in transfers panel
     renderTransferItem(transferId, fileName, 'download', fileSize);
-    
     runDownloadFlow(transferId);
 }
 
@@ -606,111 +733,108 @@ async function runDownloadFlow(transferId) {
     const transfer = activeTransfers[transferId];
     if (!transfer || transfer.canceled || transfer.paused) return;
     
-    updateTransferProgressUI(transferId, Math.round((transfer.offset / transfer.size) * 100), `<i class="fa-solid fa-arrow-down"></i> Downloading...`);
+    updateTransferProgressUI(transferId, 0, `<i class="fa-solid fa-arrow-down"></i> Connecting...`);
     
     try {
         await ensureValidToken();
         
-        while (transfer.offset < transfer.size && !transfer.paused && !transfer.canceled) {
-            const startByte = transfer.offset;
-            const endByte = Math.min(transfer.size - 1, startByte + transfer.chunkSize - 1);
+        let url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}?alt=media`;
+        
+        const googleMimeTypeExports = {
+            'application/vnd.google-apps.document': {
+                mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                ext: 'docx'
+            },
+            'application/vnd.google-apps.spreadsheet': {
+                mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ext: 'xlsx'
+            },
+            'application/vnd.google-apps.presentation': {
+                mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                ext: 'pptx'
+            },
+            'application/vnd.google-apps.drawing': {
+                mime: 'image/png',
+                ext: 'png'
+            }
+        };
+
+        const isWorkspace = transfer.mimeType && googleMimeTypeExports[transfer.mimeType];
+        
+        if (isWorkspace) {
+            const exportConfig = googleMimeTypeExports[transfer.mimeType];
+            url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}/export?mimeType=${encodeURIComponent(exportConfig.mime)}`;
+            if (!transfer.fileName.toLowerCase().endsWith('.' + exportConfig.ext)) {
+                transfer.fileName = `${transfer.fileName}.${exportConfig.ext}`;
+            }
+        }
+
+        await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            transfer.xhr = xhr;
             
-            let url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}?alt=media`;
+            xhr.open('GET', url, true);
+            xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+            xhr.responseType = 'blob';
             
-            const googleMimeTypeExports = {
-                'application/vnd.google-apps.document': {
-                    mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    ext: 'docx'
-                },
-                'application/vnd.google-apps.spreadsheet': {
-                    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    ext: 'xlsx'
-                },
-                'application/vnd.google-apps.presentation': {
-                    mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                    ext: 'pptx'
-                },
-                'application/vnd.google-apps.drawing': {
-                    mime: 'image/png',
-                    ext: 'png'
+            xhr.onprogress = (e) => {
+                if (transfer.paused || transfer.canceled) return;
+                const totalBytes = transfer.size || e.total || 0;
+                if (totalBytes > 0) {
+                    const percent = Math.min(99, Math.round((e.loaded / totalBytes) * 100));
+                    updateTransferProgressUI(transferId, percent, `<i class="fa-solid fa-arrow-down"></i> Downloading (${percent}%)...`);
+                } else {
+                    updateTransferProgressUI(transferId, 50, `<i class="fa-solid fa-arrow-down"></i> Downloading...`);
                 }
             };
-
-            const isWorkspace = transfer.mimeType && googleMimeTypeExports[transfer.mimeType];
             
-            if (isWorkspace) {
-                const exportConfig = googleMimeTypeExports[transfer.mimeType];
-                url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}/export?mimeType=${encodeURIComponent(exportConfig.mime)}`;
-                if (!transfer.fileName.toLowerCase().endsWith('.' + exportConfig.ext)) {
-                    transfer.fileName = `${transfer.fileName}.${exportConfig.ext}`;
+            xhr.onload = () => {
+                if (xhr.status === 200 || xhr.status === 206) {
+                    updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> Completed`);
+                    playTransferSound('success');
+                    
+                    const blob = xhr.response;
+                    const downloadUrl = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = transfer.fileName;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                    
+                    showToast(`Download complete: ${transfer.fileName}`, "success");
+                    setTimeout(() => {
+                        removeTransfer(transferId);
+                    }, 1500);
+                    resolve();
+                } else {
+                    reject(new Error(`Google API Status ${xhr.status}: ${xhr.statusText}`));
                 }
-            }
-
-            await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                transfer.xhr = xhr;
-                
-                xhr.open('GET', url, true);
-                xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-                xhr.responseType = 'blob';
-                
-                if (!isWorkspace) {
-                    xhr.setRequestHeader('Range', `bytes=${startByte}-${endByte}`);
-                }
-                
-                xhr.onload = () => {
-                    if (xhr.status === 200 || xhr.status === 206) {
-                        const blob = xhr.response;
-                        transfer.chunks.push(blob);
-                        
-                        if (isWorkspace) {
-                            transfer.offset = transfer.size;
-                        } else {
-                            transfer.offset = endByte + 1;
-                        }
-                        
-                        const percent = Math.min(99, Math.round((transfer.offset / transfer.size) * 100));
-                        updateTransferProgressUI(transferId, percent, `<i class="fa-solid fa-arrow-down"></i> Downloading...`);
-                        resolve();
-                    } else {
-                        reject(new Error(`Download chunk HTTP Status: ${xhr.status}`));
-                    }
-                };
-                
-                xhr.onerror = () => {
-                    reject(new Error("Network connection error"));
-                };
-                
-                xhr.send();
-            });
-        }
-        
-        if (transfer.offset >= transfer.size && !transfer.paused && !transfer.canceled) {
-            updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> Completed`);
-            playTransferSound('success');
+            };
             
-            const finalBlob = new Blob(transfer.chunks, { type: transfer.chunks[0].type });
-            const downloadUrl = URL.createObjectURL(finalBlob);
+            xhr.onerror = () => {
+                reject(new Error("Network connection error"));
+            };
             
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = transfer.fileName;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(downloadUrl);
+            xhr.onabort = () => {
+                resolve();
+            };
             
-            showToast(`Download complete: ${transfer.fileName}`, "success");
-            setTimeout(() => {
-                removeTransfer(transferId);
-            }, 1500);
-        }
+            xhr.send();
+        });
         
     } catch (err) {
         console.error("Download flow failed:", err);
         if (transfer && !transfer.paused && !transfer.canceled) {
-            showToast(`Download failed: ${transfer.fileName}`, "error");
+            showToast(`Download failed: ${transfer.fileName}. Attempting direct download...`, "warning");
+            try {
+                triggerNativeDownload(transfer.fileId, transfer.fileName, transfer.mimeType);
+            } catch (fallbackErr) {
+                showToast(`Download failed: ${transfer.fileName}`, "error");
+            }
             removeTransfer(transferId);
         }
     }
@@ -886,10 +1010,31 @@ function setupEventListeners() {
         renderFileList(filtered);
     });
 
-    // Drag and Drop Zone Config
+    // Drag and Drop Zone Config & Browse Buttons
+    const btnUploadFiles = document.getElementById('btnUploadFiles');
+    const btnUploadFolder = document.getElementById('btnUploadFolder');
+    const folderInput = document.getElementById('folderInput');
+
     if (dropZone) {
-        dropZone.addEventListener('click', () => {
+        dropZone.addEventListener('click', (e) => {
+            if (e.target.id === 'btnUploadFiles' || e.target.id === 'btnUploadFolder' || e.target.closest('#btnUploadFiles') || e.target.closest('#btnUploadFolder')) {
+                return;
+            }
             if (fileInput) fileInput.click();
+        });
+    }
+
+    if (btnUploadFiles && fileInput) {
+        btnUploadFiles.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+    }
+
+    if (btnUploadFolder && folderInput) {
+        btnUploadFolder.addEventListener('click', (e) => {
+            e.stopPropagation();
+            folderInput.click();
         });
     }
     
@@ -897,6 +1042,16 @@ function setupEventListeners() {
         fileInput.addEventListener('change', function (e) {
             if (e.target.files.length > 0) {
                 handleFileUploads(e.target.files);
+                fileInput.value = '';
+            }
+        });
+    }
+
+    if (folderInput) {
+        folderInput.addEventListener('change', function (e) {
+            if (e.target.files.length > 0) {
+                handleFileUploads(e.target.files);
+                folderInput.value = '';
             }
         });
     }
@@ -911,9 +1066,29 @@ function setupEventListeners() {
             dropZone.classList.remove('drag-over');
         });
 
-        dropZone.addEventListener('drop', function (e) {
+        dropZone.addEventListener('drop', async function (e) {
             e.preventDefault();
             dropZone.classList.remove('drag-over');
+            
+            const items = e.dataTransfer.items;
+            if (items && items.length > 0) {
+                const fileList = [];
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.webkitGetAsEntry) {
+                        const entry = item.webkitGetAsEntry();
+                        if (entry) {
+                            const files = await traverseFileTree(entry);
+                            fileList.push(...files);
+                        }
+                    }
+                }
+                if (fileList.length > 0) {
+                    handleFileUploads(fileList);
+                    return;
+                }
+            }
+            
             if (e.dataTransfer.files.length > 0) {
                 handleFileUploads(e.dataTransfer.files);
             }
@@ -928,6 +1103,40 @@ function setupEventListeners() {
             loadActiveShares();
         });
     }
+}
+
+// Recursively traverse local directory structure for drag and drop
+async function traverseFileTree(entry, path = "") {
+    return new Promise((resolve) => {
+        if (entry.isFile) {
+            entry.file((file) => {
+                file.filepath = path + file.name;
+                resolve([file]);
+            });
+        } else if (entry.isDirectory) {
+            const dirReader = entry.createReader();
+            let allEntries = [];
+            
+            const readEntriesBatch = () => {
+                dirReader.readEntries(async (entries) => {
+                    if (entries.length > 0) {
+                        allEntries = allEntries.concat(entries);
+                        readEntriesBatch();
+                    } else {
+                        const results = [];
+                        for (const childEntry of allEntries) {
+                            const files = await traverseFileTree(childEntry, path + entry.name + "/");
+                            results.push(...files);
+                        }
+                        resolve(results);
+                    }
+                });
+            };
+            readEntriesBatch();
+        } else {
+            resolve([]);
+        }
+    });
 }
 
 // Sound feedback system using Web Audio API

@@ -1,67 +1,55 @@
-# Walkthrough - Deletion Failure Fix, Active Gates Transfer Controls, Rebranding, & Gates of Sharing
+# Walkthrough - Permanent Fixes for Folder Downloads, File Downloads, & Deletion Permissions
 
-This document summarizes the changes made to AURA's Private Locker, including the **Deletion Failure Fix**, the **Active Gates Transfers Panel**, and secure public file sharing features (**Gates of Sharing**).
+This document summarizes the changes made to AURA's Private Locker to permanently fix folder downloading, file streaming downloads (like `MarkproX.zip`), directory uploads, and Google Drive deletion permissions.
 
 ---
 
 ## 🚀 Changes Made
 
-### 1. File & Folder Deletion Failure Fix
+### 1. Client-Side Folder Download as ZIP (JSZip)
+* **Recursive Tree Scanner (`fetchAllFilesRecursively`) in [app.js](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/app.js)**:
+  * Recursively scans and maps every file and nested subfolder inside any clicked Google Drive folder.
+  * Preserves directory relative paths (e.g. `subfolder/file.ext`).
+* **Folder Packaging (`downloadFolderAsZip`) in [app.js](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/app.js)**:
+  * Uses **JSZip** (loaded via CDN in [index.html](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/index.html)) to download each file sequentially/streamed and package it directly in the client browser.
+  * Handles Google Workspace exports (`.docx`, `.xlsx`, `.pptx`, `.png`).
+  * Live status and progress bar updates in the **Active Gates** transfers panel:
+    * `Scanning folder...`
+    * `Downloading [x/y]: filename`
+    * `Compressing ZIP archive (x%)...`
+  * Triggers instant browser download of `${folderName}.zip` with success synth chime.
+
+---
+
+### 2. Stream-Based File Downloader (Fixing `MarkproX.zip` Failure)
+* **Modern `onprogress` Streaming in [app.js](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/app.js)**:
+  * Removed the broken `Range` loop (which caused Google Drive API CORS issues or sent duplicate full files crashing memory).
+  * Implemented clean `XMLHttpRequest` stream downloading with real-time `onprogress` calculating exact live percentages `(loaded / total) * 100%`.
+  * Renders smooth 0% to 100% progress animation in the Active Gates panel.
+  * Automatic fallback: If any browser streaming error occurs, automatically triggers direct download (`triggerNativeDownload`) so the user never encounters a stalled download.
+
+---
+
+### 3. Folder & File Upload Browse / Drag-and-Drop Binding
+* **Browse Buttons & Dropzone in [app.js](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/app.js)**:
+  * Explicitly wired `btnUploadFiles` -> `fileInput.click()` and `btnUploadFolder` -> `folderInput.click()`.
+  * Implemented `traverseFileTree` for drag-and-drop events so users can drop entire folder trees directly into the dashboard.
+
+---
+
+### 4. Elevated Google Drive OAuth Scope (Permanent Deletion Fix)
 * **Scope Elevation [setup.html](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/setup.html)**:
-  * Elevated the Google Drive OAuth scope from `https://www.googleapis.com/auth/drive.file` to `https://www.googleapis.com/auth/drive` (Full Access).
-  * This is the definitive fix, since the `drive.file` scope only allows deleting resources created by AURA's Private Locker. Elevating it to `drive` allows the app to delete any folder or file regardless of how or where it was created on Google Drive.
-* **Robust Deletion Logic [app.js](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/app.js)**:
-  * Modified `deleteFile` to perform a `PATCH` request with `{ "trashed": true }` to Google Drive's API. This moves the target resource to the Bin (Trash) which is the standard, safe deletion method in Google Drive and prevents permission blockages.
-  * Added fallback logic: if the trashing request fails, it attempts a permanent `DELETE` request.
-  * Added detailed error reporting: if both deletion methods fail, the app extracts the exact technical error message from Google's response payload (e.g. *"Insufficient permissions"* or *"File not found"*) and displays it in the Toast notification, with guidance to re-run `setup.html` if it's a permission/scope issue.
-* **Documentation Update [README.md](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/README.md)**:
-  * Updated OAuth configuration instructions in the setup guide to match the elevated `drive` scope.
-
----
-
-### 2. Gates of Sharing (Secure Sharing Links)
-* **Serverless backend [api/share.js](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/api/share.js)**:
-  * Handled OPTIONS requests for preflight CORS validation.
-  * Implemented admin commands (`create`, `list`, `delete`) to manage sharing records saved inside the user's hidden `.locker_config.json` on Google Drive.
-  * Implemented a public GET handler to securely fetch file metadata and direct download stream links (with silent Google OAuth token refresh in the background).
-  * **15-Minute Grace Period Retry Logic**: Implemented database timestamps tracking the first download click, allowing unlimited retries for 15 minutes to handle connection drops before self-destructing.
-* **Recipient landing page [share.html](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/share.html)**:
-  * Created a premium dark glassmorphic landing page styled with Solo Leveling neon-blue accents.
-  * Added loading states, password entry validation prompts, file preview details, and download initiation.
-  * Standardized file-type icons based on extension.
-* **Dashboard integrations [index.html](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/index.html) & [app.js](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/app.js)**:
-  * Added a Share icon button to each row in the files list.
-  * Created a "Create Access Gate" modal for configuring passwords, link expiration, and download limits.
-  * Created a "Manage Active Gates" modal listing all active sharing links with current status, copy link, and ban/revoke actions.
-
----
-
-### 3. Active Gates (Transfers Panel) UI & Controls
-* **HTML Panel**: Added a custom card `transfersCard` inside [index.html](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/index.html) to list active transfers.
-* **Progress Bars**: Created styling in [style.css](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/style.css) for transfer items.
-  * **Active transfers**: Electric blue progress fill with an animating scanning sweep.
-  * **Paused transfers**: Orange/amber glowing fill with a slow pulse animation.
-* **Action Buttons**: Added custom glowing action icons next to transfers:
-  * **Pause/Resume**: A play (`▶`) / pause (`||`) toggle button.
-  * **Cancel**: A red close button (`✖`) to abort transfer.
-* **Stateful Resumable Upload Flow**:
-  * Uploads file slices in a stateful loop using Google Drive Resumable Upload session.
-  * Pause/Resume queries Google using `Content-Range: bytes */size` to resume from the exact byte successfully received.
-* **Stateful Chunked Download Flow**:
-  * Downloads files in sequential 5MB Range chunks.
-  * Memory protection suggestion popup for files >200MB recommending browser-native stream downloads.
-* **Web Audio API Synth Chimes**:
-  * Integrated real-time sound cues (sawtooth for Pause, triangle for Resume, sine alarm for Cancel, and double success chirp).
+  * Elevated the Google Drive OAuth scope to `https://www.googleapis.com/auth/drive` (Full Access).
+  * Modified `deleteFile` in [app.js](file:///C:/Users/mihir/OneDrive/Desktop/personal-cloud-drive/app.js) to perform safe `PATCH` (`{ trashed: true }`) first, falling back to permanent `DELETE`.
 
 ---
 
 ## 🧪 Verification & Testing Results
 
-1. **Deletion Testing**: Attempted file/folder deletions:
-   * **If using the old token**: Failing deletions will now generate a readable toast error explicitly notifying you about "Insufficient permissions" and instructing you to authorization-refresh using the elevated scope.
-   * **With new token (Full Drive scope)**: Deleting any folder or file (whether created inside/outside the app) succeeds 100% of the time, moving them safely to the Google Drive Trash folder.
-2. **Gate Creation**: Clicking the share icon opens the settings popup. Configuring 1-time limits, passwords, or expiration times successfully registers in `.locker_config.json` and copies the link to the clipboard.
-3. **Access Gate & Password UI**: Accessing the link in an unauthenticated browser displays a loading portal, followed by a secure password access request if password protection is enabled.
-4. **Download Stream**: Authenticating with the correct password loads file size, name, type icon, and successfully starts the Google Drive file download stream.
-5. **Grace Window Expiry**: A link set to 1-time download successfully allows retry downloads for 15 minutes, but after 15 minutes, the link correctly yields an "Access Gate Closed" notice.
-6. **Revocation**: Deleting the share in the Active Gates manager immediately wipes the share key from the config file, returning a 404/expired state on the public page.
+1. **Folder Download**:
+   * Clicking Download on a folder initiates the recursive folder scanner and builds `${folderName}.zip`.
+   * Real-time progress is rendered in the Active Gates panel.
+2. **File Download (ZIP / Binaries / Media)**:
+   * Clicking Download on `MarkproX.zip` or any file streams the bytes cleanly with live percentage without `Range` header rejections.
+3. **Browse & Drag-and-Drop**:
+   * Both "Browse Files" and "Browse Folder" buttons trigger their respective native dialogs.
