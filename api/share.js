@@ -183,14 +183,17 @@ module.exports = async (req, res) => {
             // 3. Password Verification
             if (share.password) {
                 if (!password) {
-                    return res.status(200).json({ 
+                    return res.status(401).json({ 
                         passwordRequired: true, 
                         fileName: maskFileName(share.fileName),
                         fileSize: share.fileSize
                     });
                 }
                 if (password !== share.password) {
-                    return res.status(401).json({ error: 'Incorrect password for this shared link.' });
+                    return res.status(401).json({ 
+                        passwordRequired: true,
+                        error: 'Incorrect password for this shared link.' 
+                    });
                 }
             }
 
@@ -209,8 +212,24 @@ module.exports = async (req, res) => {
                 await saveConfigToDrive(accessToken, driveConfig);
             }
 
-            // 5. Generate secure, temporary download URL
-            const downloadUrl = `https://www.googleapis.com/drive/v3/files/${share.fileId}?alt=media&access_token=${accessToken}`;
+            // If direct download requested, stream binary directly from cloud
+            if (req.query.download === 'true') {
+                let googleFileUrl = `https://www.googleapis.com/drive/v3/files/${share.fileId}?alt=media`;
+                const fileRes = await fetch(googleFileUrl, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                if (!fileRes.ok) {
+                    return res.status(500).json({ error: 'Failed to fetch file from cloud storage.' });
+                }
+                const contentType = fileRes.headers.get('content-type') || 'application/octet-stream';
+                res.setHeader('Content-Type', contentType);
+                res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(share.fileName)}"`);
+                const arrayBuf = await fileRes.arrayBuffer();
+                return res.send(Buffer.from(arrayBuf));
+            }
+
+            // 5. Generate secure, relative download URL
+            const downloadUrl = `/api/share?id=${encodeURIComponent(id)}&download=true${password ? '&password=' + encodeURIComponent(password) : ''}`;
             
             return res.status(200).json({
                 valid: true,

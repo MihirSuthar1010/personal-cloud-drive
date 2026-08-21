@@ -429,17 +429,15 @@
                 const response = await fetch(url);
                 const data = await response.json();
 
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        // Incorrect password or password required
-                        showLoading(false);
+                if (!response.ok || data.passwordRequired) {
+                    showLoading(false);
+                    if (data.passwordRequired) {
                         if (pwd) {
                             showError(data.error || "Incorrect password!");
                         }
                         showPasswordForm(true, data.fileName, data.fileSize);
                     } else {
                         // Expired, missing, or 404
-                        showLoading(false);
                         showExpired();
                     }
                     return;
@@ -495,8 +493,8 @@
             const form = document.getElementById('passwordForm');
             if (show) {
                 form.classList.add('active');
-                document.getElementById('pwdFileTitle').textContent = name;
-                document.getElementById('pwdFileSize').textContent = formatBytes(size);
+                if (name) document.getElementById('pwdFileTitle').textContent = name;
+                if (size) document.getElementById('pwdFileSize').textContent = formatBytes(size);
                 document.getElementById('portalContainer').classList.remove('glowing');
             } else {
                 form.classList.remove('active');
@@ -511,7 +509,9 @@
             document.getElementById('fileSize').textContent = formatBytes(size);
             
             const btn = document.getElementById('downloadBtn');
-            btn.href = downloadUrl;
+            if (downloadUrl) {
+                btn.href = downloadUrl;
+            }
 
             // Set file type icon
             setFileIcon(name);
