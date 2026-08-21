@@ -697,20 +697,6 @@ async function downloadFile(fileId) {
         return;
     }
     
-    // Suggest native browser download for very large files (>200MB) to prevent tab memory limits
-    if (fileSize > 200 * 1024 * 1024) {
-        const useNative = confirm(
-            `File size is very large (${formatBytes(fileSize)}).\n\n` +
-            `To prevent browser tab memory limits, we recommend using Browser-Native Download.\n\n` +
-            `Click OK to download natively in your browser.\n` +
-            `Click CANCEL to download inside the app (Active Gates).`
-        );
-        if (useNative) {
-            triggerNativeDownload(fileId, fileName, mimeType);
-            return;
-        }
-    }
-    
     const transferId = 'download-' + Date.now();
     
     activeTransfers[transferId] = {
@@ -1401,44 +1387,50 @@ function removeTransfer(id) {
     removeTransferItemUI(id);
 }
 
-function triggerNativeDownload(fileId, fileName, mimeType) {
-    let downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${accessToken}`;
-    
-    const googleMimeTypeExports = {
-        'application/vnd.google-apps.document': {
-            mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            ext: 'docx'
-        },
-        'application/vnd.google-apps.spreadsheet': {
-            mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            ext: 'xlsx'
-        },
-        'application/vnd.google-apps.presentation': {
-            mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            ext: 'pptx'
-        },
-        'application/vnd.google-apps.drawing': {
-            mime: 'image/png',
-            ext: 'png'
-        }
-    };
+async function triggerNativeDownload(fileId, fileName, mimeType) {
+    try {
+        await ensureValidToken();
+        showToast(`Preparing download: ${fileName}...`, "info");
+        
+        let url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+        const googleMimeTypeExports = {
+            'application/vnd.google-apps.document': { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' },
+            'application/vnd.google-apps.spreadsheet': { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ext: 'xlsx' },
+            'application/vnd.google-apps.presentation': { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ext: 'pptx' },
+            'application/vnd.google-apps.drawing': { mime: 'image/png', ext: 'png' }
+        };
 
-    if (mimeType && googleMimeTypeExports[mimeType]) {
-        const exportConfig = googleMimeTypeExports[mimeType];
-        downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(exportConfig.mime)}&access_token=${accessToken}`;
-        if (!fileName.toLowerCase().endsWith('.' + exportConfig.ext)) {
-            fileName = `${fileName}.${exportConfig.ext}`;
+        if (mimeType && googleMimeTypeExports[mimeType]) {
+            const exportConfig = googleMimeTypeExports[mimeType];
+            url = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(exportConfig.mime)}`;
+            if (!fileName.toLowerCase().endsWith('.' + exportConfig.ext)) {
+                fileName = `${fileName}.${exportConfig.ext}`;
+            }
         }
+
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        
+        if (!res.ok) throw new Error(`Google API returned status ${res.status}`);
+        
+        const blob = await res.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = fileName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        
+        showToast(`Downloaded: ${fileName}`, "success");
+    } catch (err) {
+        console.error("Direct download failed:", err);
+        showToast(`Download failed: ${err.message || "Network error"}`, "error");
     }
-    
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = fileName;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast("Download triggered in browser manager!", "success");
 }
 
 function getFileIconClass(mimeType, name) {
