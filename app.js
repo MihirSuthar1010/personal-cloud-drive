@@ -73,6 +73,8 @@ async function checkExistingSession() {
     }
 }
 
+let lastAuthErrorMessage = "";
+
 // Custom Login Form Handler
 async function handleCustomLogin(username, password) {
     showLoading(true);
@@ -93,7 +95,7 @@ async function handleCustomLogin(username, password) {
             initializeCloudFolder();
         }
     } else {
-        showToast("Invalid username or password.", "error");
+        showToast(lastAuthErrorMessage || "Invalid username or password.", "error");
         showLoading(false);
     }
 }
@@ -129,8 +131,9 @@ async function refreshAccessToken(username, password) {
         });
 
         if (!response.ok) {
-            const err = await response.json();
+            const err = await response.json().catch(() => ({ error: `Server error (${response.status})` }));
             console.error("Auth server error: ", err.error);
+            lastAuthErrorMessage = err.error || "Authentication failed.";
             return false;
         }
 
