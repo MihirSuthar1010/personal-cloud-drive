@@ -274,6 +274,7 @@ async function fetchFiles() {
         let data = await response.json();
         allFiles = data.files || [];
         localFileCount = allFiles.length;
+        localStorageUsed = allFiles.reduce((sum, f) => sum + parseInt(f.size || 0), 0);
         renderFileList(allFiles);
         syncHunterStats();
         fetchStorageQuota();
@@ -296,27 +297,22 @@ async function fetchStorageQuota() {
             let data = await response.json();
             if (data.storageQuota) {
                 const limit = parseInt(data.storageQuota.limit);
-                const usage = parseInt(data.storageQuota.usage);
-                localStorageUsed = usage;
+                // Use REAL locker files usage
+                const lockerUsage = localStorageUsed;
                 syncHunterStats();
-                const free = limit - usage;
                 
-                let percent = (usage / limit) * 100;
-                if (isNaN(percent)) percent = 0;
-                const percentText = percent < 0.1 && percent > 0 ? percent.toFixed(2) : Math.round(percent);
+                let percent = (lockerUsage / limit) * 100;
+                if (isNaN(percent) || percent < 0.1) percent = 1.2; // small indicator
                 
                 const usageEl = document.getElementById('storageUsageText');
-                if (usageEl) usageEl.textContent = `${formatBytes(usage)} / ${formatBytes(limit)}`;
+                if (usageEl) usageEl.textContent = formatBytes(lockerUsage);
                 
                 const percentEl = document.getElementById('storagePercentText');
-                if (percentEl) percentEl.textContent = `${percentText}% capacity utilized`;
+                if (percentEl) percentEl.textContent = `Real size of ${localFileCount} assets`;
                 
                 const freeEl = document.getElementById('storageFreeText');
-                if (freeEl) freeEl.textContent = `Free: ${formatBytes(free)}`;
+                if (freeEl) freeEl.textContent = `Account: ${formatBytes(limit)} available`;
                 
-                const totalEl = document.getElementById('storageTotalText');
-                if (totalEl) totalEl.textContent = `Total: ${formatBytes(limit)}`;
-
                 const barEl = document.getElementById('storageBarFill');
                 if (barEl) barEl.style.width = `${percent}%`;
             }
@@ -333,7 +329,7 @@ function getFileTypeConfig(mimeType, name) {
     
     if (mimeType.includes('folder')) return { icon: 'fa-solid fa-folder', cssClass: 'icon-folder' };
     if (mimeType.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
-        return { icon: 'fa-regular fa-image', cssClass: 'icon-image' };
+        return { icon: 'fa-solid fa-image', cssClass: 'icon-image' };
     }
     if (mimeType.includes('video') || ['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext)) {
         return { icon: 'fa-solid fa-film', cssClass: 'icon-video' };
@@ -342,7 +338,7 @@ function getFileTypeConfig(mimeType, name) {
         return { icon: 'fa-solid fa-music', cssClass: 'icon-code' };
     }
     if (mimeType.includes('pdf') || ext === 'pdf') {
-        return { icon: 'fa-regular fa-file-pdf', cssClass: 'icon-doc' };
+        return { icon: 'fa-solid fa-file-pdf', cssClass: 'icon-doc' };
     }
     if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || ['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
         return { icon: 'fa-solid fa-box-archive', cssClass: 'icon-archive' };
@@ -353,7 +349,7 @@ function getFileTypeConfig(mimeType, name) {
     if (mimeType.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) {
         return { icon: 'fa-solid fa-table', cssClass: 'icon-archive' };
     }
-    return { icon: 'fa-regular fa-file', cssClass: 'icon-doc' };
+    return { icon: 'fa-solid fa-file-lines', cssClass: 'icon-doc' };
 }
 
 // Render files table
@@ -399,13 +395,13 @@ function renderFileList(files) {
             <td class="file-actions-cell">
                 <div class="actions-btn-group">
                     <button class="btn-action btn-action-share" onclick="openCreateShareModal('${file.id}', '${escapedName}', ${file.size})" title="Create Share Link">
-                        <i class="fa-solid fa-link"></i>
+                        <i class="fa-solid fa-share-nodes"></i>
                     </button>
-                    <button class="btn-action btn-action-download" onclick="downloadFile('${file.id}')" title="Download">
-                        <i class="fa-solid fa-arrow-down-to-line"></i>
+                    <button class="btn-action btn-action-download" onclick="downloadFile('${file.id}')" title="Download File">
+                        <i class="fa-solid fa-download"></i>
                     </button>
-                    <button class="btn-action btn-action-delete" onclick="deleteFile('${file.id}', '${file.name}')" title="Delete">
-                        <i class="fa-regular fa-trash-can"></i>
+                    <button class="btn-action btn-action-delete" onclick="deleteFile('${file.id}', '${file.name}')" title="Delete File">
+                        <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>
             </td>

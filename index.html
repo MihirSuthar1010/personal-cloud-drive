@@ -4,27 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AURA Cloud | Personal Cloud Storage</title>
-    <!-- Google Fonts for modern SaaS typography -->
+    <!-- Google Fonts for modern typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <!-- FontAwesome 6 Pro-style icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 Free -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <!-- JSZip for dynamic client-side folder zipping -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
-    <!-- Subtle Modern Ambient Lighting (Clean & Professional) -->
-    <div class="ambient-glow ambient-glow-top"></div>
-    <div class="ambient-glow ambient-glow-bottom"></div>
+    <!-- Background Fixed AURA Cloud Watermark Logo -->
+    <div class="bg-watermark">
+        <svg viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M400 150C330 150 270 200 255 265C215 275 185 310 185 355C185 405 225 445 275 445H535C580 445 615 410 615 365C615 325 585 290 550 285C545 210 480 150 400 150Z" stroke="currentColor" stroke-width="8" stroke-dasharray="16 12"/>
+            <text x="400" y="340" text-anchor="middle" font-family="'Outfit', sans-serif" font-size="52" font-weight="800" fill="currentColor" letter-spacing="8">AURA</text>
+            <text x="400" y="380" text-anchor="middle" font-family="'Outfit', sans-serif" font-size="22" font-weight="600" fill="currentColor" letter-spacing="12">CLOUD</text>
+        </svg>
+    </div>
 
     <div class="app-container">
-        <!-- Modern SaaS Header -->
+        <!-- White & Red Header -->
         <header class="app-header">
             <div class="header-brand">
                 <div class="brand-logo">
-                    <i class="fa-solid fa-cloud-bolt"></i>
+                    <i class="fa-solid fa-cloud"></i>
                 </div>
                 <div class="brand-info">
                     <h1>AURA <span class="brand-tag">Cloud</span></h1>
@@ -32,22 +37,22 @@
                 <div class="brand-divider"></div>
                 <div class="vault-status">
                     <span class="status-indicator"></span>
-                    <span class="vault-path"><i class="fa-regular fa-folder-closed"></i> Mihir_Privet_Cloud</span>
+                    <span class="vault-path"><i class="fa-solid fa-folder"></i> Mihir_Privet_Cloud</span>
                 </div>
             </div>
 
             <div class="user-profile" id="userProfile" style="display: none;">
                 <div class="user-badge">
                     <div class="user-avatar-circle">
-                        <i class="fa-solid fa-user-shield"></i>
+                        <i class="fa-solid fa-user"></i>
                     </div>
                     <div class="user-text">
                         <span class="user-greeting">Signed in as</span>
                         <span class="user-name-bold" id="userName">MIHIR</span>
                     </div>
                 </div>
-                <button id="logoutBtn" class="btn btn-logout" title="Sign out of AURA Cloud">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <button id="logoutBtn" class="btn btn-logout" title="Sign out">
+                    <i class="fa-solid fa-right-from-bracket"></i>
                     <span>Logout</span>
                 </button>
             </div>
@@ -60,10 +65,10 @@
                 <!-- Login View -->
                 <div class="login-content" id="loginView">
                     <div class="login-brand-icon">
-                        <i class="fa-solid fa-cloud-bolt"></i>
+                        <i class="fa-solid fa-cloud"></i>
                     </div>
                     <h2>Welcome to AURA Cloud</h2>
-                    <p class="login-subtext">Secure, private cloud storage backed by Google Drive</p>
+                    <p class="login-subtext">Secure personal cloud vault backed by Google Drive</p>
                     
                     <form id="loginForm" class="login-form">
                         <div class="input-group">
@@ -85,10 +90,10 @@
                 <!-- Forgot Password View -->
                 <div class="login-content" id="forgotView" style="display: none;">
                     <div class="login-brand-icon reset-icon">
-                        <i class="fa-solid fa-shield-halved"></i>
+                        <i class="fa-solid fa-key"></i>
                     </div>
-                    <h2>Reset Access Credentials</h2>
-                    <p class="login-subtext">Provide your username and master secret key to reset password</p>
+                    <h2>Reset Password</h2>
+                    <p class="login-subtext">Enter username and secret code to reset credentials</p>
                     
                     <form id="forgotForm" class="login-form">
                         <div class="input-group">
@@ -100,7 +105,7 @@
                             <input type="password" id="resetNewPassword" placeholder="New Password" required autocomplete="new-password">
                         </div>
                         <div class="input-group">
-                            <i class="fa-solid fa-key input-icon"></i>
+                            <i class="fa-solid fa-shield-halved input-icon"></i>
                             <input type="password" id="resetSecretCode" placeholder="Master Reset Key" required>
                         </div>
                         <div class="btn-group">
@@ -116,12 +121,12 @@
                 <!-- Left panel: Storage stats, Upload and Transfers -->
                 <div class="left-panel">
                     
-                    <!-- Professional Storage Analytics Card (Replaces Anime Hunter Card) -->
+                    <!-- White & Red Storage Overview Card -->
                     <div class="card storage-overview-card" id="storageOverviewCard">
                         <div class="storage-card-header">
                             <div class="storage-user-meta">
                                 <div class="storage-avatar">
-                                    <i class="fa-solid fa-shield-check"></i>
+                                    <i class="fa-solid fa-shield-halved"></i>
                                 </div>
                                 <div>
                                     <h4 class="storage-user-name" id="storageUserNameText">MIHIR</h4>
@@ -131,18 +136,18 @@
                             <span class="cloud-sync-badge"><i class="fa-solid fa-circle-check"></i> Connected</span>
                         </div>
 
-                        <!-- Storage Bar Section -->
+                        <!-- Real Locker Storage Meter Section -->
                         <div class="storage-meter-section">
                             <div class="meter-labels">
-                                <span class="meter-title"><i class="fa-solid fa-hard-drive"></i> Storage Capacity</span>
-                                <span class="meter-value" id="storageUsageText">Loading...</span>
+                                <span class="meter-title"><i class="fa-solid fa-hard-drive"></i> Locker Storage</span>
+                                <span class="meter-value" id="storageUsageText">0 MB</span>
                             </div>
                             <div class="meter-progress-track">
-                                <div class="meter-progress-fill" id="storageBarFill" style="width: 0%"></div>
+                                <div class="meter-progress-fill" id="storageBarFill" style="width: 2%"></div>
                             </div>
                             <div class="meter-footer-info">
-                                <span id="storagePercentText">0% utilized</span>
-                                <span id="storageFreeText">Free: -</span>
+                                <span id="storagePercentText">Real size of 15 assets</span>
+                                <span id="storageFreeText">Account: 5 TB available</span>
                             </div>
                         </div>
 
@@ -150,40 +155,41 @@
                         <div class="storage-stats-grid">
                             <div class="stat-box">
                                 <span class="stat-box-label">TOTAL ASSETS</span>
-                                <span class="stat-box-value" id="hunterFilesText">0</span>
+                                <span class="stat-box-value" id="hunterFilesText">15</span>
                             </div>
                             <div class="stat-box">
                                 <span class="stat-box-label">DATA CONSUMED</span>
-                                <span class="stat-box-value" id="hunterManaText">0 Bytes</span>
+                                <span class="stat-box-value" id="hunterManaText">0 MB</span>
                             </div>
                         </div>
 
-                        <!-- Hidden compatibility placeholders for Hunter ID bindings in older scripts -->
+                        <!-- Hidden compatibility elements for older script references -->
                         <div style="display: none;">
                             <span id="hunterNameText">MIHIR</span>
-                            <span id="hunterTitleText">Personal Cloud Owner</span>
+                            <span id="hunterTitleText">Owner</span>
                             <span id="hunterRankBadge">PRO</span>
                             <span id="hunterLevelText">Lv. 1</span>
                             <span id="hunterExpPercentText">100%</span>
                             <div id="hunterExpBarFill"></div>
                             <i id="hunterAvatarIcon"></i>
                             <div id="hunterCard"></div>
+                            <span id="storageTotalText">5 TB</span>
                         </div>
                     </div>
 
-                    <!-- Clean Modern Upload Card -->
+                    <!-- Clean White & Red Upload Card -->
                     <div class="card upload-card">
                         <div class="card-section-title">
-                            <h3><i class="fa-solid fa-arrow-up-from-bracket"></i> Upload Assets</h3>
+                            <h3><i class="fa-solid fa-cloud-arrow-up"></i> Upload Assets</h3>
                             <p class="section-subtitle">Stream files or folders directly to Google Drive</p>
                         </div>
                         
                         <div class="drop-zone" id="dropZone">
                             <div class="drop-icon-wrapper">
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <i class="fa-solid fa-arrow-up-from-bracket"></i>
                             </div>
                             <p class="drop-primary-text">Drag &amp; drop files or folders here</p>
-                            <p class="drop-secondary-text">or choose an option below</p>
+                            <p class="drop-secondary-text">or click one of the buttons below</p>
                             
                             <input type="file" id="fileInput" multiple style="display: none;">
                             <input type="file" id="folderInput" webkitdirectory directory multiple style="display: none;">
@@ -192,10 +198,10 @@
                         <!-- Dual Action Buttons -->
                         <div class="upload-actions-group">
                             <button class="btn btn-primary btn-upload-action" id="btnUploadFiles">
-                                <i class="fa-solid fa-file-arrow-up"></i> Browse Files
+                                <i class="fa-solid fa-file"></i> Browse Files
                             </button>
                             <button class="btn btn-secondary btn-upload-action" id="btnUploadFolder">
-                                <i class="fa-solid fa-folder-plus"></i> Browse Folder
+                                <i class="fa-solid fa-folder"></i> Browse Folder
                             </button>
                         </div>
 
@@ -212,14 +218,14 @@
                         </div>
                     </div>
 
-                    <!-- Transfers (Activity Center - Replaces "Active Gates") -->
+                    <!-- Transfers (Live Activity) -->
                     <div class="card transfers-card" id="transfersCard" style="display: none;">
                         <div class="transfers-header">
-                            <h3><i class="fa-solid fa-arrow-right-arrow-left"></i> Live Transfers</h3>
+                            <h3><i class="fa-solid fa-arrows-rotate"></i> Live Transfers</h3>
                             <span class="active-count-badge" id="activeTransfersCount">0</span>
                         </div>
                         <div class="transfers-list" id="transfersList">
-                            <!-- Dynamic transfer rows will be inserted here -->
+                            <!-- Dynamic transfer rows will go here -->
                         </div>
                     </div>
 
@@ -234,7 +240,7 @@
                                 <span class="files-count-badge" id="filesTotalBadge">15 items</span>
                             </div>
                             <div class="browser-actions">
-                                <button id="manageSharesBtn" class="btn btn-secondary btn-share-manager" title="Manage active public sharing links">
+                                <button id="manageSharesBtn" class="btn btn-secondary btn-share-manager" title="Manage shared links">
                                     <i class="fa-solid fa-share-nodes"></i> Shared Links
                                 </button>
                                 <button id="refreshBtn" class="btn btn-icon" title="Refresh files from cloud">
@@ -248,7 +254,7 @@
                             <div class="search-box">
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <input type="text" id="searchInput" placeholder="Search files by name or extension...">
-                                <span class="search-shortcut">⌘K</span>
+                                <span class="search-shortcut">Ctrl+K</span>
                             </div>
                         </div>
 
@@ -276,7 +282,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="fileTableBody">
-                                        <!-- Dynamically inserted files will go here -->
+                                        <!-- Dynamically inserted files go here -->
                                     </tbody>
                                 </table>
                             </div>
@@ -286,16 +292,16 @@
             </section>
         </main>
 
-        <!-- Modern Clean Footer -->
+        <!-- Clean Footer -->
         <footer class="app-footer">
             <div class="footer-content">
-                <span class="footer-left">AURA Cloud &copy; 2026 • Enterprise Personal Storage</span>
+                <span class="footer-left">AURA Cloud &copy; 2026 • Private Vault</span>
                 <span class="footer-right">काल भी उसका क्या करे, जो भक्त हो महाकाल का! 🕉️</span>
             </div>
         </footer>
     </div>
 
-    <!-- Hidden Level Up Screen Overlay (Kept inactive to prevent errors if referenced) -->
+    <!-- Hidden Level Up Screen Overlay -->
     <div class="level-up-overlay" id="levelUpOverlay" style="display: none !important;">
         <div class="level-up-box">
             <div class="level-up-title">LEVEL UP</div>
@@ -318,7 +324,7 @@
             <div class="modal-body">
                 <div class="share-file-info">
                     <div class="share-icon-circle">
-                        <i class="fa-solid fa-file-arrow-down"></i>
+                        <i class="fa-solid fa-file"></i>
                     </div>
                     <div>
                         <h4 id="shareModalFileName">-</h4>
@@ -381,7 +387,7 @@
                 </div>
                 <div class="shares-list-container" id="sharesListContainer" style="display: none;">
                     <div class="shares-list" id="activeSharesList">
-                        <!-- Share rows will be dynamically inserted here -->
+                        <!-- Share rows will go here -->
                     </div>
                 </div>
             </div>
