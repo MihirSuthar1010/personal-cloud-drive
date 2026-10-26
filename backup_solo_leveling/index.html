@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA's Private Locker</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- JSZip for dynamic client-side folder zipping -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <!-- Background dynamic glow effects -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+    <div class="bg-glow bg-glow-4"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-cloud-bolt logo-icon"></i>
+                <h1>AURA's Private Locker</h1>
+            </div>
+            <div class="user-profile" id="userProfile" style="display: none;">
+                <span id="userName">Welcome</span>
+                <button id="logoutBtn" class="btn btn-secondary">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="app-main">
+            <!-- Login Card (shown when not authenticated) -->
+            <section class="card glassmorphic" id="loginCard">
+                <!-- Login View -->
+                <div class="login-content" id="loginView">
+                    <div class="cloud-illustration">
+                        <i class="fa-solid fa-cloud-arrow-up main-illustration-icon animate-float"></i>
+                    </div>
+                    <h2>AURA's Private Locker</h2>
+                    
+                    <form id="loginForm" class="login-form">
+                        <div class="input-group">
+                            <i class="fa-solid fa-user input-icon"></i>
+                            <input type="text" id="customUsername" placeholder="Username" required autocomplete="username">
+                        </div>
+                        <div class="input-group">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="customPassword" placeholder="Password" required autocomplete="current-password">
+                            <i class="fa-solid fa-eye-slash password-toggle-icon" id="togglePassword" title="Show/Hide Password"></i>
+                        </div>
+                        <div class="forgot-container">
+                            <a href="#" id="forgotPasswordLink" class="forgot-link">Forgot Password?</a>
+                        </div>
+                        <button type="submit" id="loginBtn" style="display: none;"></button>
+                    </form>
+                </div>
+
+                <!-- Forgot Password View -->
+                <div class="login-content" id="forgotView" style="display: none;">
+                    <div class="cloud-illustration">
+                        <i class="fa-solid fa-key main-illustration-icon animate-float"></i>
+                    </div>
+                    <h2>Reset Password</h2>
+                    
+                    <form id="forgotForm" class="login-form">
+                        <div class="input-group">
+                            <i class="fa-solid fa-user input-icon"></i>
+                            <input type="text" id="resetUsername" placeholder="Username" required autocomplete="username">
+                        </div>
+                        <div class="input-group">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="resetNewPassword" placeholder="New Password" required autocomplete="new-password">
+                        </div>
+                        <div class="input-group">
+                            <i class="fa-solid fa-shield-halved input-icon"></i>
+                            <input type="password" id="resetSecretCode" placeholder="Secret Reset Code" required>
+                        </div>
+                        <div class="btn-group">
+                            <button type="submit" class="btn btn-primary btn-full-width">Reset & Login</button>
+                            <button type="button" id="backToLoginBtn" class="btn btn-secondary btn-full-width">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Dashboard (shown when authenticated) -->
+            <section class="dashboard-grid" id="dashboard" style="display: none;">
+                <!-- Left panel: Upload and stats -->
+                <div class="left-panel">
+                    <!-- Hunter Profile Card -->
+                    <div class="card glassmorphic hunter-card rank-E" id="hunterCard">
+                        <div class="hunter-header">
+                            <div class="hunter-avatar-container">
+                                <i class="fa-solid fa-skull-crossbones hunter-avatar-icon" id="hunterAvatarIcon"></i>
+                            </div>
+                            <div class="hunter-info">
+                                <div class="hunter-name" id="hunterNameText">AURA</div>
+                                <div class="hunter-title" id="hunterTitleText">Mankind's Weakest Hunter</div>
+                            </div>
+                            <div class="hunter-rank-badge" id="hunterRankBadge">E</div>
+                        </div>
+                        <div class="hunter-stats">
+                            <div class="hunter-stat">
+                                <span class="stat-label">Hunter Level</span>
+                                <span class="stat-value" id="hunterLevelText">Lv. 1</span>
+                            </div>
+                            <div class="hunter-stat">
+                                <span class="stat-label">Shadow Army (Files)</span>
+                                <span class="stat-value" id="hunterFilesText">0</span>
+                            </div>
+                            <div class="hunter-stat">
+                                <span class="stat-label">Mana Power (Storage)</span>
+                                <span class="stat-value" id="hunterManaText">0 Bytes</span>
+                            </div>
+                        </div>
+                        <div class="hunter-progress-container">
+                            <div class="progress-labels">
+                                <span class="progress-label">Raid EXP</span>
+                                <span class="progress-value" id="hunterExpPercentText">0%</span>
+                            </div>
+                            <div class="hunter-progress-bar">
+                                <div class="hunter-progress-fill" id="hunterExpBarFill" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload Card -->
+                    <div class="card glassmorphic upload-card">
+                        <h3>Upload Files</h3>
+                        <p class="section-subtitle">Drag & drop or browse your local files</p>
+                        
+                        <div class="drop-zone" id="dropZone">
+                            <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+                            <p class="drop-text" id="dropText">Drag & drop files here or click to browse</p>
+                            <input type="file" id="fileInput" multiple style="display: none;">
+                        </div>
+
+                        <!-- Upload Queue/Progress -->
+                        <div class="upload-progress-container" id="uploadProgressContainer" style="display: none;">
+                            <div class="upload-progress-header">
+                                <span class="file-name-label" id="uploadingFileName">Uploading...</span>
+                                <span class="progress-percent" id="uploadPercent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+                            </div>
+                            <button id="cancelUploadBtn" class="btn btn-text" style="display: none;">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Active Gates (Transfers Panel) -->
+                    <div class="card glassmorphic transfers-card" id="transfersCard" style="display: none;">
+                        <div class="transfers-header">
+                            <h3><i class="fa-solid fa-door-open"></i> Active Gates</h3>
+                            <span class="active-count-badge" id="activeTransfersCount">0</span>
+                        </div>
+                        <div class="transfers-list" id="transfersList">
+                            <!-- Dynamic transfer rows will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Cloud Details Card -->
+                    <div class="card glassmorphic details-card">
+                        <h3>Storage Info</h3>
+                        <div class="storage-meta">
+                            <div class="info-row">
+                                <span class="info-label">Folder Name:</span>
+                                <span class="info-val highlight-val">AURA_Private_Cloud</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Status:</span>
+                                <span class="info-val status-online"><i class="fa-solid fa-circle"></i> Online 24/7</span>
+                            </div>
+                            
+                            <!-- Dynamic Storage Progress Bar -->
+                            <div class="storage-progress-section" style="margin-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px;">
+                                <div class="info-row" style="border: none; padding: 0; margin-bottom: 8px;">
+                                    <span class="info-label"><i class="fa-solid fa-hard-drive"></i> Used Storage:</span>
+                                    <span class="info-val highlight-val" id="storageUsageText">Loading...</span>
+                                </div>
+                                <div class="progress-bar-bg" style="height: 8px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden;">
+                                    <div class="progress-bar-fill" id="storageBarFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-indigo)); border-radius: 4px; transition: width 0.5s ease;"></div>
+                                </div>
+                                <div class="info-row" style="border: none; padding: 0; margin-top: 8px; font-size: 11px;">
+                                    <span class="info-label" id="storageFreeText">Free: -</span>
+                                    <span class="info-label" id="storageTotalText">Total: -</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right panel: File browser -->
+                <div class="right-panel">
+                    <div class="card glassmorphic file-browser-card">
+                        <div class="browser-header">
+                            <h3>Files & Folders</h3>
+                            <div class="browser-actions" style="display: flex; gap: 8px;">
+                                <button id="manageSharesBtn" class="btn btn-secondary btn-share-manager" title="Manage active shares">
+                                    <i class="fa-solid fa-share-nodes"></i> Active Gates
+                                </button>
+                                <button id="refreshBtn" class="btn btn-icon" title="Refresh files">
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search and filter -->
+                        <div class="filter-bar">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="searchInput" placeholder="Search files...">
+                            </div>
+                        </div>
+
+                        <!-- File list container -->
+                        <div class="file-list-wrapper">
+                            <div id="loadingIndicator" class="loading-state">
+                                <div class="spinner"></div>
+                                <p>Fetching files from your cloud...</p>
+                            </div>
+
+                            <div id="emptyState" class="empty-state" style="display: none;">
+                                <i class="fa-regular fa-folder-open empty-icon"></i>
+                                <h4>No files uploaded yet</h4>
+                                <p>Drag and drop files/folders in the left panel to start uploading to your AURA_Private_Cloud!</p>
+                            </div>
+
+                            <div id="fileTableContainer" style="display: none;">
+                                <table class="file-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Size</th>
+                                            <th>Uploaded Date</th>
+                                            <th class="actions-col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fileTableBody">
+                                        <!-- Dynamically inserted files will go here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Made By AURA ❤️ काल भी उसका क्या करे, जो भक्त हो महाकाल का! 🕉️</p>
+        </footer>
+    </div>
+
+    <!-- Level Up Screen Overlay (Hidden by default) -->
+    <div class="level-up-overlay" id="levelUpOverlay" style="display: none;">
+        <div class="level-up-box">
+            <div class="level-up-stars">⚡ ⚡ ⚡</div>
+            <div class="level-up-title">LEVEL UP</div>
+            <div class="level-up-level" id="overlayLevelText">Lv. 1</div>
+            <div class="level-up-rank" id="overlayRankText">Power Level Increased!</div>
+            <p>Your Mana and Power have expanded.</p>
+            <button class="btn btn-primary" onclick="closeLevelUpOverlay()">Continue Raid</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Create Share Modal -->
+    <div class="modal-overlay" id="createShareModal" style="display: none;">
+        <div class="modal-content glassmorphic modal-share-creation">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-share-nodes"></i> Create Access Gate</h3>
+                <button class="btn-close-modal" onclick="closeShareModal('createShareModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="share-file-info">
+                    <i class="fa-solid fa-file-arrow-down file-preview-icon"></i>
+                    <div>
+                        <h4 id="shareModalFileName">-</h4>
+                        <p id="shareModalFileSize">-</p>
+                    </div>
+                </div>
+                
+                <form id="shareCreationForm" onsubmit="handleShareSubmit(event)">
+                    <input type="hidden" id="shareFileId">
+                    <input type="hidden" id="shareFileName">
+                    <input type="hidden" id="shareFileSize">
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="sharePasswordOption" class="modal-label"><i class="fa-solid fa-key"></i> Password Key (Optional)</label>
+                        <input type="text" id="sharePasswordOption" class="modal-input" placeholder="Leave empty for public access...">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="shareExpiryOption" class="modal-label"><i class="fa-solid fa-clock"></i> Link Expiration</label>
+                        <select id="shareExpiryOption" class="modal-select">
+                            <option value="0">Never Expire</option>
+                            <option value="1">1 Hour</option>
+                            <option value="24">1 Day (24 Hours)</option>
+                            <option value="168">7 Days (1 Week)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="shareLimitOption" class="modal-label"><i class="fa-solid fa-download"></i> Max Downloads (1-Time self-destruct)</label>
+                        <select id="shareLimitOption" class="modal-select">
+                            <option value="0">Unlimited Downloads</option>
+                            <option value="1">1-Time Download (15m Retry Window)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full-width" style="margin-top: 15px;">
+                        Create Share Link <i class="fa-solid fa-plus"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Shares Modal -->
+    <div class="modal-overlay" id="manageSharesModal" style="display: none;">
+        <div class="modal-content glassmorphic modal-share-manager">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-share-nodes"></i> Active Sharing Gates</h3>
+                <button class="btn-close-modal" onclick="closeShareModal('manageSharesModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="sharesLoadingIndicator" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading active gates...</p>
+                </div>
+                <div id="sharesEmptyState" class="empty-state" style="display: none;">
+                    <i class="fa-solid fa-link-slash empty-icon"></i>
+                    <h4>No active sharing gates</h4>
+                    <p>Share a file to generate secure download links.</p>
+                </div>
+                <div class="shares-list-container" id="sharesListContainer" style="display: none;">
+                    <div class="shares-list" id="activeSharesList">
+                        <!-- Share rows will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

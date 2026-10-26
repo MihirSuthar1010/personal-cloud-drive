@@ -305,10 +305,20 @@ async function fetchStorageQuota() {
                 if (isNaN(percent)) percent = 0;
                 const percentText = percent < 0.1 && percent > 0 ? percent.toFixed(2) : Math.round(percent);
                 
-                document.getElementById('storageUsageText').textContent = `${formatBytes(usage)} (${percentText}%)`;
-                document.getElementById('storageFreeText').textContent = `Free: ${formatBytes(free)}`;
-                document.getElementById('storageTotalText').textContent = `Total: ${formatBytes(limit)}`;
-                document.getElementById('storageBarFill').style.width = `${percent}%`;
+                const usageEl = document.getElementById('storageUsageText');
+                if (usageEl) usageEl.textContent = `${formatBytes(usage)} / ${formatBytes(limit)}`;
+                
+                const percentEl = document.getElementById('storagePercentText');
+                if (percentEl) percentEl.textContent = `${percentText}% capacity utilized`;
+                
+                const freeEl = document.getElementById('storageFreeText');
+                if (freeEl) freeEl.textContent = `Free: ${formatBytes(free)}`;
+                
+                const totalEl = document.getElementById('storageTotalText');
+                if (totalEl) totalEl.textContent = `Total: ${formatBytes(limit)}`;
+
+                const barEl = document.getElementById('storageBarFill');
+                if (barEl) barEl.style.width = `${percent}%`;
             }
         }
     } catch (err) {
@@ -316,10 +326,43 @@ async function fetchStorageQuota() {
     }
 }
 
+// Map file types to crisp SaaS icons
+function getFileTypeConfig(mimeType, name) {
+    if (!mimeType) mimeType = '';
+    const ext = name.split('.').pop().toLowerCase();
+    
+    if (mimeType.includes('folder')) return { icon: 'fa-solid fa-folder', cssClass: 'icon-folder' };
+    if (mimeType.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+        return { icon: 'fa-regular fa-image', cssClass: 'icon-image' };
+    }
+    if (mimeType.includes('video') || ['mp4', 'mkv', 'avi', 'mov', 'webm'].includes(ext)) {
+        return { icon: 'fa-solid fa-film', cssClass: 'icon-video' };
+    }
+    if (mimeType.includes('audio') || ['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+        return { icon: 'fa-solid fa-music', cssClass: 'icon-code' };
+    }
+    if (mimeType.includes('pdf') || ext === 'pdf') {
+        return { icon: 'fa-regular fa-file-pdf', cssClass: 'icon-doc' };
+    }
+    if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || ['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+        return { icon: 'fa-solid fa-box-archive', cssClass: 'icon-archive' };
+    }
+    if (mimeType.includes('text') || ['txt', 'md', 'html', 'css', 'js', 'json', 'py', 'cpp', 'c', 'h'].includes(ext)) {
+        return { icon: 'fa-solid fa-code', cssClass: 'icon-code' };
+    }
+    if (mimeType.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) {
+        return { icon: 'fa-solid fa-table', cssClass: 'icon-archive' };
+    }
+    return { icon: 'fa-regular fa-file', cssClass: 'icon-doc' };
+}
+
 // Render files table
 function renderFileList(files) {
     fileTableBody.innerHTML = '';
     
+    const countBadge = document.getElementById('filesTotalBadge');
+    if (countBadge) countBadge.textContent = `${files.length} items`;
+
     if (files.length === 0) {
         emptyState.style.display = 'flex';
         fileTableContainer.style.display = 'none';
@@ -331,7 +374,7 @@ function renderFileList(files) {
 
     files.forEach(file => {
         const row = document.createElement('tr');
-        const iconClass = getFileIconClass(file.mimeType, file.name);
+        const typeConfig = getFileTypeConfig(file.mimeType, file.name);
         const formattedSize = formatBytes(file.size);
         const escapedName = file.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const formattedDate = new Date(file.createdTime).toLocaleDateString('en-IN', {
@@ -344,23 +387,25 @@ function renderFileList(files) {
 
         row.innerHTML = `
             <td>
-                <div class="file-name-cell" onclick="downloadFile('${file.id}')" style="cursor: pointer; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255,255,255,0.15);">
-                    <span class="file-icon"><i class="${iconClass}"></i></span>
+                <div class="file-name-cell" onclick="downloadFile('${file.id}')" style="cursor: pointer;">
+                    <div class="file-type-icon ${typeConfig.cssClass}">
+                        <i class="${typeConfig.icon}"></i>
+                    </div>
                     <span class="file-display-name" title="${file.name}">${file.name}</span>
                 </div>
             </td>
-            <td>${formattedSize}</td>
-            <td>${formattedDate}</td>
-            <td class="actions-col">
-                <div class="actions-cell">
-                    <button class="btn-action btn-share-manager" onclick="openCreateShareModal('${file.id}', '${escapedName}', ${file.size})" title="Share File" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.2); color: var(--accent-blue); padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
-                        <i class="fa-solid fa-share-nodes"></i>
+            <td class="file-size-cell">${formattedSize}</td>
+            <td class="file-date-cell">${formattedDate}</td>
+            <td class="file-actions-cell">
+                <div class="actions-btn-group">
+                    <button class="btn-action btn-action-share" onclick="openCreateShareModal('${file.id}', '${escapedName}', ${file.size})" title="Create Share Link">
+                        <i class="fa-solid fa-link"></i>
                     </button>
-                    <button class="btn-action btn-download" onclick="downloadFile('${file.id}')" title="Download">
-                        <i class="fa-solid fa-download"></i>
+                    <button class="btn-action btn-action-download" onclick="downloadFile('${file.id}')" title="Download">
+                        <i class="fa-solid fa-arrow-down-to-line"></i>
                     </button>
-                    <button class="btn-action btn-delete" onclick="deleteFile('${file.id}', '${file.name}')" title="Delete">
-                        <i class="fa-solid fa-trash-can"></i>
+                    <button class="btn-action btn-action-delete" onclick="deleteFile('${file.id}', '${file.name}')" title="Delete">
+                        <i class="fa-regular fa-trash-can"></i>
                     </button>
                 </div>
             </td>
@@ -1496,118 +1541,39 @@ function showToast(message, type = 'info') {
 }
 
 // ==========================================
-// SOLO LEVELING HUNTER RANK SYSTEM
+// STORAGE OVERVIEW & SYSTEM METRICS
 // ==========================================
 
 let localFileCount = 0;
 let localStorageUsed = 0;
 
 function syncHunterStats() {
-    updateHunterRank(localFileCount, localStorageUsed);
+    updateStorageOverview(localFileCount, localStorageUsed);
+}
+
+function updateStorageOverview(fileCount, bytesUsed) {
+    const username = sessionStorage.getItem('custom_username') || 'MIHIR';
+    const formattedName = username.charAt(0).toUpperCase() + username.slice(1);
+    
+    const nameEl = document.getElementById('storageUserNameText');
+    if (nameEl) nameEl.textContent = formattedName;
+    
+    const filesEl = document.getElementById('hunterFilesText');
+    if (filesEl) filesEl.textContent = fileCount;
+    
+    const manaEl = document.getElementById('hunterManaText');
+    if (manaEl) manaEl.textContent = formatBytes(bytesUsed);
+
+    const totalBadge = document.getElementById('filesTotalBadge');
+    if (totalBadge) totalBadge.textContent = `${fileCount} items`;
 }
 
 function updateHunterRank(fileCount, bytesUsed) {
-    const username = sessionStorage.getItem('custom_username') || 'AURA';
-    const formattedName = username.charAt(0).toUpperCase() + username.slice(1);
-    
-    const nameEl = document.getElementById('hunterNameText');
-    if (nameEl) nameEl.textContent = formattedName;
-
-    // Hunter leveling arpeggio formula
-    const totalVal = Math.sqrt(fileCount * 4) + Math.sqrt(bytesUsed / (1024 * 1024 * 5));
-    const calculatedLvl = Math.max(1, Math.min(99, Math.floor(totalVal) + 1));
-    const xpPercent = Math.round((totalVal - Math.floor(totalVal)) * 100);
-
-    // Rank configuration
-    let rank = 'E';
-    let title = "Mankind's Weakest Hunter";
-    let iconClass = "fa-solid fa-skull-crossbones";
-    let color = "#9ca3af";
-
-    if (calculatedLvl >= 6 && calculatedLvl <= 15) {
-        rank = 'D';
-        title = "Raid Dungeon Porter";
-        iconClass = "fa-solid fa-shield-halved";
-        color = "#10b981";
-    } else if (calculatedLvl >= 16 && calculatedLvl <= 30) {
-        rank = 'C';
-        title = "Strike Force Member";
-        iconClass = "fa-solid fa-user-ninja";
-        color = "#3b82f6";
-    } else if (calculatedLvl >= 31 && calculatedLvl <= 50) {
-        rank = 'B';
-        title = "Elite Raid Team Leader";
-        iconClass = "fa-solid fa-wand-magic-sparkles";
-        color = "#8b5cf6";
-    } else if (calculatedLvl >= 51 && calculatedLvl <= 75) {
-        rank = 'A';
-        title = "Guild Vice-Master";
-        iconClass = "fa-solid fa-bolt";
-        color = "#f59e0b";
-    } else if (calculatedLvl >= 76) {
-        rank = 'S';
-        title = "Shadow Monarch / S-Rank";
-        iconClass = "fa-solid fa-crown";
-        color = "#00f0ff";
-    }
-
-    // Update HTML elements safely
-    const levelEl = document.getElementById('hunterLevelText');
-    const filesEl = document.getElementById('hunterFilesText');
-    const manaEl = document.getElementById('hunterManaText');
-    const xpPercentEl = document.getElementById('hunterExpPercentText');
-    const xpBarFillEl = document.getElementById('hunterExpBarFill');
-    const titleEl = document.getElementById('hunterTitleText');
-    const rankBadgeEl = document.getElementById('hunterRankBadge');
-    const avatarIconEl = document.getElementById('hunterAvatarIcon');
-    const hunterCardEl = document.getElementById('hunterCard');
-
-    if (levelEl) levelEl.textContent = `Lv. ${calculatedLvl}`;
-    if (filesEl) filesEl.textContent = fileCount;
-    if (manaEl) manaEl.textContent = formatBytes(bytesUsed);
-    if (xpPercentEl) xpPercentEl.textContent = `${xpPercent}%`;
-    if (xpBarFillEl) xpBarFillEl.style.width = `${xpPercent}%`;
-    if (titleEl) titleEl.textContent = title;
-    if (rankBadgeEl) rankBadgeEl.textContent = rank;
-
-    if (avatarIconEl) {
-        avatarIconEl.className = `${iconClass} hunter-avatar-icon`;
-        avatarIconEl.style.color = color;
-        avatarIconEl.style.textShadow = `0 0 10px ${color}`;
-    }
-
-    if (hunterCardEl) {
-        hunterCardEl.className = `card glassmorphic hunter-card rank-${rank}`;
-    }
-
-    // Check for level or rank up!
-    const savedLvl = parseInt(localStorage.getItem('hunter_level') || '1');
-    const savedRank = localStorage.getItem('hunter_rank') || 'E';
-
-    // Set defaults if they don't exist
-    if (!localStorage.getItem('hunter_level')) {
-        localStorage.setItem('hunter_level', calculatedLvl);
-        localStorage.setItem('hunter_rank', rank);
-        return;
-    }
-
-    if (calculatedLvl > savedLvl) {
-        triggerLevelUpScreen(calculatedLvl, rank, rank !== savedRank);
-        localStorage.setItem('hunter_level', calculatedLvl);
-        localStorage.setItem('hunter_rank', rank);
-    }
+    updateStorageOverview(fileCount, bytesUsed);
 }
 
-function triggerLevelUpScreen(level, rank, didRankUp) {
-    const overlayLvl = document.getElementById('overlayLevelText');
-    const overlayRank = document.getElementById('overlayRankText');
-    const overlay = document.getElementById('levelUpOverlay');
-
-    if (overlayLvl) overlayLvl.textContent = `Lv. ${level}`;
-    if (overlayRank) overlayRank.textContent = didRankUp ? `Rank ${rank} Increased! ⚡` : `Power Level Increased!`;
-    if (overlay) overlay.style.display = 'flex';
-    
-    playLevelUpSound();
+function triggerLevelUpScreen() {
+    // Disabled in clean professional SaaS mode
 }
 
 function closeLevelUpOverlay() {
@@ -1616,32 +1582,7 @@ function closeLevelUpOverlay() {
 }
 
 function playLevelUpSound() {
-    try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Chime notes: C4, E4, G4, C5 (major arpeggio)
-        const notes = [261.63, 329.63, 392.00, 523.25];
-        const duration = 0.15; // note duration
-        
-        notes.forEach((freq, index) => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * duration);
-            
-            gain.gain.setValueAtTime(0.15, audioCtx.currentTime + index * duration);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + index * duration + duration);
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start(audioCtx.currentTime + index * duration);
-            osc.stop(audioCtx.currentTime + index * duration + duration);
-        });
-    } catch (e) {
-        console.error("Audio failed to play:", e);
-    }
+    // Silent in clean professional SaaS mode
 }
 
 /* ==========================================
