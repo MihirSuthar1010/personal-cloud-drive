@@ -4,12 +4,15 @@
  * ==========================================
  */
 
-// Target folder name in Google Drive
+// Target folder names in Google Drive (Real Vault vs Decoy Ghost Vault)
 const TARGET_FOLDER_NAME = 'Mihir_Privet_Cloud';
+const DECOY_FOLDER_NAME = 'Mihir_Decoy_Vault';
 
 // Global State
 let accessToken = null;
 let tokenExpiryTime = 0; // Epoch timestamp in ms
+let isDecoyVault = sessionStorage.getItem('is_decoy_vault') === 'true';
+let isInspectingDecoy = false;
 let currentFolderId = sessionStorage.getItem('gdrive_folder_id') || null;
 let allFiles = []; // To keep track of listed files for search filters
 const activeTransfers = {}; // Global active transfers registry
@@ -54,6 +57,10 @@ async function checkExistingSession() {
         // Fetch new Google Access Token using saved credentials
         const success = await refreshAccessToken(savedUser, savedPass);
         if (success) {
+            showDashboardView();
+            currentFolderId = (isDecoyVault || isInspectingDecoy) 
+                ? sessionStorage.getItem('gdrive_decoy_folder_id') 
+                : sessionStorage.getItem('gdrive_real_folder_id');
             fetchStorageQuota();
             if (currentFolderId) {
                 fetchFiles();
@@ -85,9 +92,13 @@ async function handleCustomLogin(username, password) {
         sessionStorage.setItem('custom_username', username);
         sessionStorage.setItem('custom_password', password);
         
-        showToast("Access granted! Connecting to your cloud...", "success");
+        showToast(isDecoyVault ? "Connecting to Cloud Drive..." : "Access granted! Connecting to your cloud...", "success");
         showDashboardView();
         
+        currentFolderId = (isDecoyVault || isInspectingDecoy) 
+            ? sessionStorage.getItem('gdrive_decoy_folder_id') 
+            : sessionStorage.getItem('gdrive_real_folder_id');
+
         fetchStorageQuota();
         if (currentFolderId) {
             fetchFiles();
@@ -140,6 +151,10 @@ async function refreshAccessToken(username, password) {
         const data = await response.json();
         accessToken = data.access_token;
         tokenExpiryTime = Date.now() + (data.expires_in * 1000);
+        if (typeof data.is_decoy === 'boolean') {
+            isDecoyVault = data.is_decoy;
+            sessionStorage.setItem('is_decoy_vault', isDecoyVault ? 'true' : 'false');
+        }
         return true;
     } catch (err) {
         console.error("Network error during auth: ", err);
@@ -170,9 +185,16 @@ async function ensureValidToken() {
 function handleLogout() {
     accessToken = null;
     tokenExpiryTime = 0;
+    isDecoyVault = false;
+    isInspectingDecoy = false;
     sessionStorage.removeItem('custom_username');
     sessionStorage.removeItem('custom_password');
     sessionStorage.removeItem('gdrive_folder_id');
+    sessionStorage.removeItem('gdrive_real_folder_id');
+    sessionStorage.removeItem('gdrive_decoy_folder_id');
+    sessionStorage.removeItem('is_decoy_vault');
+    const decoyBanner = document.getElementById('decoyInspectionBanner');
+    if (decoyBanner) decoyBanner.style.display = 'none';
     showToast("Logged out successfully.", "info");
     showLoginView();
 }
@@ -196,22 +218,40 @@ function showDashboardView() {
     // Set custom username label in header
     const savedUser = sessionStorage.getItem('custom_username') || 'User';
     document.getElementById('userName').textContent = `Welcome, ${savedUser}`;
+
+    // Ghost Vault button: only visible in Real Vault (hidden in Decoy mode for stealth)
+    const ghostBtn = document.getElementById('ghostVaultBtn');
+    if (ghostBtn) {
+        ghostBtn.style.display = (isDecoyVault && !isInspectingDecoy) ? 'none' : 'inline-flex';
+    }
+
+    // Update vault path label
+    const pathDisplay = document.getElementById('vaultPathDisplay');
+    if (pathDisplay) {
+        if (isInspectingDecoy) {
+            pathDisplay.innerHTML = '<i class="fa-solid fa-user-secret"></i> Mihir_Decoy_Vault';
+        } else {
+            pathDisplay.innerHTML = '<i class="fa-solid fa-folder"></i> Mihir_Privet_Cloud';
+        }
+    }
 }
 
 /* ==========================================
    GOOGLE DRIVE API OPERATIONS
    ========================================== */
 
-// Finds or creates the target folder in Google Drive root
+// Finds or creates the target folder in Google Drive root (Real vs Decoy)
 async function initializeCloudFolder() {
     showLoading(true);
     try {
         await ensureValidToken();
 
+        const activeFolderName = (isDecoyVault || isInspectingDecoy) ? DECOY_FOLDER_NAME : TARGET_FOLDER_NAME;
+
         // Search for existing folder
         let response = await fetch(
             `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
-                `name = '${TARGET_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
+                `name = '${activeFolderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
             )}`,
             {
                 headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -224,11 +264,15 @@ async function initializeCloudFolder() {
         
         if (data.files && data.files.length > 0) {
             currentFolderId = data.files[0].id;
+            if (isDecoyVault || isInspectingDecoy) {
+                sessionStorage.setItem('gdrive_decoy_folder_id', currentFolderId);
+            } else {
+                sessionStorage.setItem('gdrive_real_folder_id', currentFolderId);
+            }
             sessionStorage.setItem('gdrive_folder_id', currentFolderId);
-            showToast("AURA_Private_Cloud directory loaded.", "info");
             fetchFiles();
         } else {
-            showToast("Creating directory on your Drive...", "info");
+            showToast("Initializing cloud vault directory...", "info");
             let createResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
                 method: 'POST',
                 headers: {
@@ -236,7 +280,7 @@ async function initializeCloudFolder() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    name: TARGET_FOLDER_NAME,
+                    name: activeFolderName,
                     mimeType: 'application/vnd.google-apps.folder'
                 })
             });
@@ -245,8 +289,13 @@ async function initializeCloudFolder() {
             
             let folder = await createResponse.json();
             currentFolderId = folder.id;
+            if (isDecoyVault || isInspectingDecoy) {
+                sessionStorage.setItem('gdrive_decoy_folder_id', currentFolderId);
+            } else {
+                sessionStorage.setItem('gdrive_real_folder_id', currentFolderId);
+            }
             sessionStorage.setItem('gdrive_folder_id', currentFolderId);
-            showToast("Directory created successfully!", "success");
+            showToast("Directory ready!", "success");
             fetchFiles();
         }
     } catch (error) {
@@ -1823,4 +1872,129 @@ function copyToClipboard(text) {
     document.execCommand('copy');
     document.body.removeChild(tempInput);
     showToast("Sharing link copied to clipboard!", "success");
+}
+
+
+/* ==========================================
+   GHOST VAULT (DECOY MODE) HANDLERS
+   ========================================== */
+
+async function openGhostVaultModal() {
+    if (isDecoyVault && !isInspectingDecoy) return;
+    const modal = document.getElementById('ghostVaultModal');
+    if (!modal) return;
+    
+    // Fetch current decoy settings from server
+    try {
+        const savedUser = sessionStorage.getItem('custom_username');
+        const savedPass = sessionStorage.getItem('custom_password');
+        const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: savedUser,
+                password: savedPass,
+                action: 'get_decoy_settings'
+            })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('decoyPasswordInput').value = data.decoy_password || '000000';
+        }
+    } catch (err) {
+        console.error("Error loading decoy settings:", err);
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeGhostVaultModal() {
+    const modal = document.getElementById('ghostVaultModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function handleSaveDecoyPassword(e) {
+    if (e) e.preventDefault();
+    const newDecoyPass = document.getElementById('decoyPasswordInput').value.trim();
+    if (!newDecoyPass) {
+        showToast("Please enter a valid decoy password.", "error");
+        return;
+    }
+    
+    showLoading(true);
+    try {
+        const savedUser = sessionStorage.getItem('custom_username');
+        const savedPass = sessionStorage.getItem('custom_password');
+        const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: savedUser,
+                password: savedPass,
+                action: 'set_decoy_password',
+                newDecoyPassword: newDecoyPass
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            showToast("Decoy password saved successfully!", "success");
+            closeGhostVaultModal();
+        } else {
+            showToast(data.error || "Failed to update decoy password.", "error");
+        }
+    } catch (err) {
+        console.error("Error saving decoy password:", err);
+        showToast("Network error saving decoy settings.", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Allows Master to temporarily inspect & populate the Decoy Vault with dummy files
+function toggleDecoyInspection() {
+    closeGhostVaultModal();
+    isInspectingDecoy = true;
+    currentFolderId = sessionStorage.getItem('gdrive_decoy_folder_id') || null;
+    
+    const banner = document.getElementById('decoyInspectionBanner');
+    if (banner) banner.style.display = 'flex';
+    
+    const ghostBtn = document.getElementById('ghostVaultBtn');
+    if (ghostBtn) ghostBtn.style.display = 'none';
+
+    const pathDisplay = document.getElementById('vaultPathDisplay');
+    if (pathDisplay) {
+        pathDisplay.innerHTML = '<i class="fa-solid fa-user-secret"></i> Mihir_Decoy_Vault';
+    }
+
+    showToast("Switched to Decoy Vault. Upload dummy files here.", "info");
+    if (currentFolderId) {
+        fetchFiles();
+    } else {
+        initializeCloudFolder();
+    }
+}
+
+function exitDecoyInspection() {
+    isInspectingDecoy = false;
+    currentFolderId = sessionStorage.getItem('gdrive_real_folder_id') || null;
+    
+    const banner = document.getElementById('decoyInspectionBanner');
+    if (banner) banner.style.display = 'none';
+    
+    const ghostBtn = document.getElementById('ghostVaultBtn');
+    if (ghostBtn) ghostBtn.style.display = 'inline-flex';
+
+    const pathDisplay = document.getElementById('vaultPathDisplay');
+    if (pathDisplay) {
+        pathDisplay.innerHTML = '<i class="fa-solid fa-folder"></i> Mihir_Privet_Cloud';
+    }
+
+    showToast("Returned to Real Vault.", "success");
+    if (currentFolderId) {
+        fetchFiles();
+    } else {
+        initializeCloudFolder();
+    }
 }

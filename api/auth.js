@@ -4,8 +4,10 @@
  * ==========================================
  * Handles credential checks and exchanges the Google Refresh Token
  * for a temporary Google Drive API Access Token.
- * Also supports secure password reset via a Secret Code, persisting
- * the updated password inside a hidden config file on the user's Google Drive.
+ * Also supports:
+ *  - Password reset via Secret Code
+ *  - Ghost Vault / Decoy Mode authentication & configuration
+ *  - Unified .locker_config.json persistence on Google Drive
  */
 
 module.exports = async (req, res) => {
@@ -24,7 +26,7 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { username, password, action, newPassword, secretCode } = req.body || {};
+        const { username, password, action, newPassword, secretCode, newDecoyPassword } = req.body || {};
 
         // 3. Retrieve secrets from Environment Variables (auto-sanitized)
         const expectedUsername = (process.env.CUSTOM_USERNAME || '').trim();
@@ -71,6 +73,9 @@ module.exports = async (req, res) => {
         const tokenData = await googleResponse.json();
         const accessToken = tokenData.access_token;
 
+        // Retrieve unified config from Google Drive
+        const driveConfig = await getStoredConfig(accessToken);
+
         // 5. Handle password reset action
         if (action === 'reset') {
             if (!newPassword || !secretCode) {
@@ -83,8 +88,12 @@ module.exports = async (req, res) => {
                 return res.status(401).json({ error: 'Incorrect secret reset code' });
             }
 
-            // Save the new password to Google Drive
-            const saveSuccess = await savePasswordToDrive(accessToken, newPassword);
+            // Save the new password to Google Drive config (preserves other fields)
+            const updatedConfig = {
+                ...(driveConfig || {}),
+                custom_password: newPassword
+            };
+            const saveSuccess = await saveConfigToDrive(accessToken, updatedConfig);
             if (!saveSuccess) {
                 return res.status(500).json({ error: 'Failed to save new password to Google Drive configuration' });
             }
@@ -93,26 +102,68 @@ module.exports = async (req, res) => {
             res.setHeader('Cache-Control', 'no-store');
             return res.status(200).json({
                 access_token: accessToken,
-                expires_in: tokenData.expires_in
+                expires_in: tokenData.expires_in,
+                is_decoy: false
             });
         }
 
-        // 6. Handle standard login
-        let currentExpectedPassword = expectedPassword;
-        const drivePassword = await getStoredPasswordFromDrive(accessToken);
-        if (drivePassword) {
-            currentExpectedPassword = drivePassword;
+        // Determine current expected master password
+        let currentMasterPassword = expectedPassword;
+        if (driveConfig && driveConfig.custom_password) {
+            currentMasterPassword = driveConfig.custom_password;
         }
 
-        if (!password || password !== currentExpectedPassword) {
+        // 6. Handle Ghost Vault settings actions (Requires Master Password)
+        if (action === 'get_decoy_settings') {
+            if (!password || password !== currentMasterPassword) {
+                return res.status(401).json({ error: 'Unauthorized: Master Password required' });
+            }
+            return res.status(200).json({
+                decoy_password: (driveConfig && driveConfig.decoy_password) ? driveConfig.decoy_password : '000000'
+            });
+        }
+
+        if (action === 'set_decoy_password') {
+            if (!password || password !== currentMasterPassword) {
+                return res.status(401).json({ error: 'Unauthorized: Master Password required to modify Decoy settings' });
+            }
+            if (!newDecoyPassword || typeof newDecoyPassword !== 'string' || newDecoyPassword.trim().length === 0) {
+                return res.status(400).json({ error: 'Valid decoy password is required' });
+            }
+            if (newDecoyPassword.trim() === currentMasterPassword) {
+                return res.status(400).json({ error: 'Decoy password cannot be identical to Master password' });
+            }
+
+            const updatedConfig = {
+                ...(driveConfig || {}),
+                decoy_password: newDecoyPassword.trim()
+            };
+            const saveSuccess = await saveConfigToDrive(accessToken, updatedConfig);
+            if (!saveSuccess) {
+                return res.status(500).json({ error: 'Failed to save Decoy settings to Google Drive configuration' });
+            }
+
+            return res.status(200).json({ success: true, message: 'Decoy password updated successfully' });
+        }
+
+        // 7. Handle standard login (Ghost Vault / Real Vault routing)
+        let isDecoy = false;
+        const configuredDecoyPassword = (driveConfig && driveConfig.decoy_password) ? driveConfig.decoy_password : '000000';
+
+        if (password === configuredDecoyPassword && configuredDecoyPassword !== currentMasterPassword) {
+            isDecoy = true;
+        } else if (password === currentMasterPassword) {
+            isDecoy = false;
+        } else {
             return res.status(401).json({ error: 'Invalid username or password' });
         }
 
-        // Success! Return the access token to the frontend client
+        // Success! Return access token and vault mode
         res.setHeader('Cache-Control', 'no-store');
         return res.status(200).json({
             access_token: accessToken,
-            expires_in: tokenData.expires_in
+            expires_in: tokenData.expires_in,
+            is_decoy: isDecoy
         });
 
     } catch (err) {
@@ -127,7 +178,7 @@ module.exports = async (req, res) => {
  * ==========================================
  */
 
-async function getStoredPasswordFromDrive(accessToken) {
+async function getStoredConfig(accessToken) {
     try {
         const query = "name = '.locker_config.json' and trashed = false";
         const searchUrl = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(query) + '&fields=files(id)';
@@ -146,15 +197,14 @@ async function getStoredPasswordFromDrive(accessToken) {
         });
         if (!contentRes.ok) return null;
         
-        const config = await contentRes.json();
-        return config.custom_password || null;
+        return await contentRes.json();
     } catch (err) {
-        console.error("Error reading password from Drive config:", err);
+        console.error("Error reading config from Drive:", err);
         return null;
     }
 }
 
-async function savePasswordToDrive(accessToken, newPassword) {
+async function saveConfigToDrive(accessToken, configObj) {
     try {
         const query = "name = '.locker_config.json' and trashed = false";
         const searchUrl = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(query) + '&fields=files(id)';
@@ -165,7 +215,7 @@ async function savePasswordToDrive(accessToken, newPassword) {
         if (!searchRes.ok) throw new Error("Failed to search Drive config file");
         
         const searchData = await searchRes.json();
-        const fileContent = JSON.stringify({ custom_password: newPassword });
+        const fileContent = JSON.stringify(configObj, null, 2);
 
         if (searchData.files && searchData.files.length > 0) {
             // Update existing config file
@@ -178,7 +228,7 @@ async function savePasswordToDrive(accessToken, newPassword) {
                 },
                 body: fileContent
             });
-            if (!updateRes.ok) throw new Error("Failed to update config file in Drive");
+            return updateRes.ok;
         } else {
             // Create a new config file
             const boundary = 'locker_config_boundary';
@@ -204,11 +254,10 @@ async function savePasswordToDrive(accessToken, newPassword) {
                 },
                 body: multipartBody
             });
-            if (!createRes.ok) throw new Error("Failed to create config file in Drive");
+            return createRes.ok;
         }
-        return true;
     } catch (err) {
-        console.error("Error saving password to Drive config:", err);
+        console.error("Error saving config to Drive:", err);
         return false;
     }
 }

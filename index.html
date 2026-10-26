@@ -42,6 +42,10 @@
             </div>
 
             <div class="user-profile" id="userProfile" style="display: none;">
+                <button id="ghostVaultBtn" class="btn btn-ghost-vault" onclick="openGhostVaultModal()" title="Ghost Vault Settings" style="display: none;">
+                    <i class="fa-solid fa-user-secret"></i>
+                    <span>Ghost Vault</span>
+                </button>
                 <div class="user-badge">
                     <div class="user-avatar-circle">
                         <i class="fa-solid fa-user"></i>
@@ -57,6 +61,17 @@
                 </button>
             </div>
         </header>
+
+        <!-- Decoy Vault Inspector Banner (Only shown when owner is previewing/managing Decoy files) -->
+        <div id="decoyInspectionBanner" class="decoy-inspection-banner" style="display: none;">
+            <div class="decoy-banner-text">
+                <i class="fa-solid fa-user-secret"></i>
+                <span><strong>Ghost Vault Inspector:</strong> Currently managing <code>Mihir_Decoy_Vault</code>. Files uploaded here will only appear when logging in with Decoy Password.</span>
+            </div>
+            <button class="btn btn-exit-decoy" onclick="exitDecoyInspection()">
+                <i class="fa-solid fa-arrow-left"></i> Exit to Real Vault
+            </button>
+        </div>
 
         <!-- Main Body -->
         <main class="app-main">
@@ -390,6 +405,41 @@
                         <!-- Share rows will go here -->
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ghost Vault Modal -->
+    <div class="modal-overlay" id="ghostVaultModal" style="display: none;">
+        <div class="modal-content modal-share-creation">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-secret"></i> Ghost Vault (Decoy Settings)</h3>
+                <button class="btn-close-modal" onclick="closeGhostVaultModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: rgba(220, 38, 38, 0.06); border: 1px solid rgba(220, 38, 38, 0.2); padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 13px; line-height: 1.5; color: var(--text-secondary);">
+                    <strong style="color: var(--accent-red); display: block; margin-bottom: 4px;">
+                        <i class="fa-solid fa-shield-halved"></i> Anti-Coercion Decoy Mode
+                    </strong>
+                    If someone forces you to open your vault, enter your <strong>Decoy Password</strong> at login. AURA will open an isolated dummy vault containing only harmless decoy files with zero trace of your real private files.
+                </div>
+
+                <form id="ghostVaultForm" onsubmit="handleSaveDecoyPassword(event)">
+                    <div class="form-group">
+                        <label for="decoyPasswordInput" class="modal-label"><i class="fa-solid fa-key"></i> Decoy Password (Fake Vault Pass)</label>
+                        <input type="text" id="decoyPasswordInput" class="modal-input" placeholder="e.g. 000000" autocomplete="off" required>
+                        <small style="display: block; margin-top: 6px; font-size: 11px; color: var(--text-muted);">Default is <code>000000</code>. Decoy users will never see your real files.</small>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Decoy Pass
+                        </button>
+                        <button type="button" class="btn btn-outline" id="manageDecoyFilesBtn" onclick="toggleDecoyInspection()" style="flex: 1.2;">
+                            <i class="fa-solid fa-folder-open"></i> Manage Decoy Files
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
