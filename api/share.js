@@ -17,9 +17,9 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const clientID = process.env.GD_CLIENT_ID;
-        const clientSecret = process.env.GD_CLIENT_SECRET;
-        const refreshToken = process.env.GD_REFRESH_TOKEN;
+        const clientID = (process.env.GD_CLIENT_ID || '').trim().replace(/^["']|["']$/g, '');
+        const clientSecret = (process.env.GD_CLIENT_SECRET || '').trim().replace(/^["']|["']$/g, '');
+        const refreshToken = (process.env.GD_REFRESH_TOKEN || '').trim().replace(/^["']|["']$/g, '');
 
         if (!clientID || !clientSecret || !refreshToken) {
             return res.status(500).json({ error: 'Server configuration missing. Google OAuth variables are not set on Vercel.' });

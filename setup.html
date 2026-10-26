@@ -176,12 +176,12 @@
 
         <div class="form-group">
             <label for="clientId">Google OAuth Client ID</label>
-            <input type="text" id="clientId" placeholder="Paste Client ID here (from Google Cloud Console)">
+            <input type="text" id="clientId" placeholder="Paste Client ID here">
         </div>
 
         <div class="form-group">
             <label for="clientSecret">Google OAuth Client Secret</label>
-            <input type="password" id="clientSecret" placeholder="Paste Client Secret here (from Google Cloud Console)">
+            <input type="password" id="clientSecret" placeholder="Paste Client Secret here">
         </div>
 
         <button class="btn" id="authBtn" onclick="startAuthFlow()">
@@ -191,12 +191,23 @@
         <div class="result-box" id="resultBox">
             <h3><i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> Refresh Token Generated Successfully!</h3>
             <p>Copy the code block below and save it as your **`GD_REFRESH_TOKEN`** in the Vercel Environment Variables.</p>
-            <div class="token-container" id="tokenOutput">Fetching token...</div>
-            <div class="copy-hint">Double-click the green code block to select and copy the entire key.</div>
+            <div class="token-container" id="tokenOutput" onclick="copyToken()" title="Click to copy">Fetching token...</div>
+            <button class="btn" style="margin-top: 12px; background: #10B981;" onclick="copyToken()">
+                <i class="fa-solid fa-copy"></i> Click to Copy New Refresh Token
+            </button>
         </div>
     </div>
 
-    <script>
+        <script>
+        function copyToken() {
+            const el = document.getElementById('tokenOutput');
+            const txt = el.textContent.trim();
+            if (txt && !txt.startsWith('ERROR') && !txt.startsWith('Fetching') && !txt.startsWith('Exchanging')) {
+                navigator.clipboard.writeText(txt).then(() => {
+                    alert('Copied to clipboard!');
+                });
+            }
+        }
         let client;
 
         function startAuthFlow() {

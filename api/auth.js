@@ -26,13 +26,13 @@ module.exports = async (req, res) => {
     try {
         const { username, password, action, newPassword, secretCode } = req.body || {};
 
-        // 3. Retrieve secrets from Environment Variables
-        const expectedUsername = process.env.CUSTOM_USERNAME;
-        const expectedPassword = process.env.CUSTOM_PASSWORD;
-        const clientID = process.env.GD_CLIENT_ID;
-        const clientSecret = process.env.GD_CLIENT_SECRET;
-        const refreshToken = process.env.GD_REFRESH_TOKEN;
-        const resetCode = process.env.RESET_CODE;
+        // 3. Retrieve secrets from Environment Variables (auto-sanitized)
+        const expectedUsername = (process.env.CUSTOM_USERNAME || '').trim();
+        const expectedPassword = (process.env.CUSTOM_PASSWORD || '').trim();
+        const clientID = (process.env.GD_CLIENT_ID || '').trim().replace(/^["']|["']$/g, '');
+        const clientSecret = (process.env.GD_CLIENT_SECRET || '').trim().replace(/^["']|["']$/g, '');
+        const refreshToken = (process.env.GD_REFRESH_TOKEN || '').trim().replace(/^["']|["']$/g, '');
+        const resetCode = (process.env.RESET_CODE || '').trim();
 
         // Check if Google API environment variables are configured
         if (!clientID || !clientSecret || !refreshToken) {
@@ -60,9 +60,12 @@ module.exports = async (req, res) => {
         });
 
         if (!googleResponse.ok) {
-            const errData = await googleResponse.json();
+            const errData = await googleResponse.json().catch(() => ({ error: 'OAuth Request Failed' }));
             console.error("Google Token Refresh Error: ", errData);
-            return res.status(400).json({ error: 'Failed to refresh Google token: ' + (errData.error_description || errData.error) });
+            const detailedMsg = errData.error_description 
+                ? `${errData.error} (${errData.error_description})` 
+                : (errData.error || 'Bad Request');
+            return res.status(400).json({ error: 'Failed to refresh Google token: ' + detailedMsg });
         }
 
         const tokenData = await googleResponse.json();
