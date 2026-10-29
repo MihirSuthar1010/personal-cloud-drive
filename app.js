@@ -2143,19 +2143,13 @@ function handleCalculatorInput(action, val) {
         if (history) history.textContent = `${calcPrev} ${getOpSymbol(val)}`;
     } else if (action === 'equals') {
         // ------------------------------------------
-        // SECRET PASSCODE CHECK (MASTER vs DECOY)
+        // SECRET GATEKEEPER PASSCODE CHECK (876346)
         // ------------------------------------------
         const secretCandidate = calcCurrent.replace(/[^0-9a-zA-Z]/g, '');
         
-        // 1. Check Master Password (10102004)
-        if (secretCandidate === '10102004') {
-            unlockLockerFromCalculator('MIHIR', '10102004');
-            return;
-        }
-        
-        // 2. Check Decoy Password (000000)
-        if (secretCandidate === '000000') {
-            unlockLockerFromCalculator('MIHIR', '000000');
+        // Secret code to drop disguise and reveal Login Screen
+        if (secretCandidate === '876346') {
+            revealLoginPageFromCalculator();
             return;
         }
 
@@ -2208,20 +2202,27 @@ function getOpSymbol(op) {
     return '+';
 }
 
-function unlockLockerFromCalculator(username, password) {
+function revealLoginPageFromCalculator() {
     const screen = document.getElementById('calcScreen');
     const overlay = document.getElementById('calculatorDisguise');
-    if (screen) screen.textContent = "ACCESS...";
+    if (screen) screen.textContent = "UNLOCKED";
 
-    setTimeout(async () => {
+    setTimeout(() => {
         sessionStorage.setItem('aura_unlocked', 'true');
         isDisguiseActive = false;
         document.title = "AURA Cloud";
         if (overlay) overlay.classList.add('calc-hidden');
 
-        // Authenticate directly with the secret password entered
-        await handleCustomLogin(username, password);
-    }, 300);
+        // Reveal the clean login screen so user can choose Real or Decoy login
+        showLoginView();
+
+        const passwordInput = document.getElementById('password');
+        if (passwordInput) {
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+        showToast("Disguise unlocked. Please sign in.", "info");
+    }, 280);
 }
 
 function toggleCalculatorDisguise(activate) {

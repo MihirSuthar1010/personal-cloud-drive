@@ -119,7 +119,7 @@ module.exports = async (req, res) => {
                 return res.status(401).json({ error: 'Unauthorized: Master Password required' });
             }
             return res.status(200).json({
-                decoy_password: (driveConfig && driveConfig.decoy_password) ? driveConfig.decoy_password : '000000'
+                decoy_password: (driveConfig && driveConfig.decoy_password) ? driveConfig.decoy_password : '20041010'
             });
         }
 
@@ -148,7 +148,7 @@ module.exports = async (req, res) => {
 
         // 7. Handle standard login (Ghost Vault / Real Vault routing)
         let isDecoy = false;
-        const configuredDecoyPassword = (driveConfig && driveConfig.decoy_password) ? driveConfig.decoy_password : '000000';
+        const configuredDecoyPassword = (driveConfig && driveConfig.decoy_password) ? driveConfig.decoy_password : '20041010';
 
         if (password === configuredDecoyPassword && configuredDecoyPassword !== currentMasterPassword) {
             isDecoy = true;
