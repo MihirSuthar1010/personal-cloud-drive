@@ -58,9 +58,13 @@ async function checkExistingSession() {
         const success = await refreshAccessToken(savedUser, savedPass);
         if (success) {
             showDashboardView();
+            allFiles = [];
+            if (fileTableBody) fileTableBody.innerHTML = '';
+            
             currentFolderId = (isDecoyVault || isInspectingDecoy) 
-                ? sessionStorage.getItem('gdrive_decoy_folder_id') 
-                : sessionStorage.getItem('gdrive_real_folder_id');
+                ? (localStorage.getItem('aura_decoy_folder_id') || sessionStorage.getItem('gdrive_decoy_folder_id'))
+                : (localStorage.getItem('aura_real_folder_id') || sessionStorage.getItem('gdrive_real_folder_id'));
+            
             fetchStorageQuota();
             if (currentFolderId) {
                 fetchFiles();
@@ -95,9 +99,16 @@ async function handleCustomLogin(username, password) {
         showToast(isDecoyVault ? "Connecting to Cloud Drive..." : "Access granted! Connecting to your cloud...", "success");
         showDashboardView();
         
+        // CRITICAL: Clear file cache and DOM table so previous vault data never leaks
+        allFiles = [];
+        localFileCount = 0;
+        localStorageUsed = 0;
+        if (fileTableBody) fileTableBody.innerHTML = '';
+        
+        // Explicitly resolve the folder ID for the authenticated mode
         currentFolderId = (isDecoyVault || isInspectingDecoy) 
-            ? sessionStorage.getItem('gdrive_decoy_folder_id') 
-            : sessionStorage.getItem('gdrive_real_folder_id');
+            ? (localStorage.getItem('aura_decoy_folder_id') || sessionStorage.getItem('gdrive_decoy_folder_id'))
+            : (localStorage.getItem('aura_real_folder_id') || sessionStorage.getItem('gdrive_real_folder_id'));
 
         fetchStorageQuota();
         if (currentFolderId) {
@@ -111,25 +122,9 @@ async function handleCustomLogin(username, password) {
     }
 }
 
-// Silent Login Form Handler for automatic login during typing
+// Silent Login Form Handler for automatic login during typing (reuses handleCustomLogin)
 async function attemptSilentLogin(username, password) {
-    const success = await refreshAccessToken(username, password);
-    
-    if (success) {
-        // Save credentials locally for auto-login next time
-        sessionStorage.setItem('custom_username', username);
-        sessionStorage.setItem('custom_password', password);
-        
-        showToast("Access granted! Connecting to your cloud...", "success");
-        showDashboardView();
-        
-        fetchStorageQuota();
-        if (currentFolderId) {
-            fetchFiles();
-        } else {
-            initializeCloudFolder();
-        }
-    }
+    await handleCustomLogin(username, password);
 }
 
 // Contacts Vercel serverless auth endpoint to retrieve a fresh Google token
@@ -187,14 +182,33 @@ function handleLogout() {
     tokenExpiryTime = 0;
     isDecoyVault = false;
     isInspectingDecoy = false;
+    currentFolderId = null;
+    allFiles = [];
+    localFileCount = 0;
+    localStorageUsed = 0;
+    
     sessionStorage.removeItem('custom_username');
     sessionStorage.removeItem('custom_password');
     sessionStorage.removeItem('gdrive_folder_id');
-    sessionStorage.removeItem('gdrive_real_folder_id');
-    sessionStorage.removeItem('gdrive_decoy_folder_id');
     sessionStorage.removeItem('is_decoy_vault');
+    
+    // Clear DOM file lists completely
+    if (fileTableBody) fileTableBody.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'none';
+    if (fileTableContainer) fileTableContainer.style.display = 'none';
+
+    // Clear password input field
+    const passwordInput = document.getElementById('password');
+    if (passwordInput) passwordInput.value = '';
+
     const decoyBanner = document.getElementById('decoyInspectionBanner');
     if (decoyBanner) decoyBanner.style.display = 'none';
+
+    const pathDisplay = document.getElementById('vaultPathDisplay');
+    if (pathDisplay) {
+        pathDisplay.innerHTML = '<i class="fa-solid fa-folder"></i> Mihir_Privet_Cloud';
+    }
+
     showToast("Logged out successfully.", "info");
     showLoginView();
 }
@@ -265,8 +279,10 @@ async function initializeCloudFolder() {
         if (data.files && data.files.length > 0) {
             currentFolderId = data.files[0].id;
             if (isDecoyVault || isInspectingDecoy) {
+                localStorage.setItem('aura_decoy_folder_id', currentFolderId);
                 sessionStorage.setItem('gdrive_decoy_folder_id', currentFolderId);
             } else {
+                localStorage.setItem('aura_real_folder_id', currentFolderId);
                 sessionStorage.setItem('gdrive_real_folder_id', currentFolderId);
             }
             sessionStorage.setItem('gdrive_folder_id', currentFolderId);
@@ -290,8 +306,10 @@ async function initializeCloudFolder() {
             let folder = await createResponse.json();
             currentFolderId = folder.id;
             if (isDecoyVault || isInspectingDecoy) {
+                localStorage.setItem('aura_decoy_folder_id', currentFolderId);
                 sessionStorage.setItem('gdrive_decoy_folder_id', currentFolderId);
             } else {
+                localStorage.setItem('aura_real_folder_id', currentFolderId);
                 sessionStorage.setItem('gdrive_real_folder_id', currentFolderId);
             }
             sessionStorage.setItem('gdrive_folder_id', currentFolderId);
@@ -1955,7 +1973,12 @@ async function handleSaveDecoyPassword(e) {
 function toggleDecoyInspection() {
     closeGhostVaultModal();
     isInspectingDecoy = true;
-    currentFolderId = sessionStorage.getItem('gdrive_decoy_folder_id') || null;
+    allFiles = [];
+    localFileCount = 0;
+    localStorageUsed = 0;
+    if (fileTableBody) fileTableBody.innerHTML = '';
+    
+    currentFolderId = localStorage.getItem('aura_decoy_folder_id') || sessionStorage.getItem('gdrive_decoy_folder_id') || null;
     
     const banner = document.getElementById('decoyInspectionBanner');
     if (banner) banner.style.display = 'flex';
@@ -1978,7 +2001,12 @@ function toggleDecoyInspection() {
 
 function exitDecoyInspection() {
     isInspectingDecoy = false;
-    currentFolderId = sessionStorage.getItem('gdrive_real_folder_id') || null;
+    allFiles = [];
+    localFileCount = 0;
+    localStorageUsed = 0;
+    if (fileTableBody) fileTableBody.innerHTML = '';
+    
+    currentFolderId = localStorage.getItem('aura_real_folder_id') || sessionStorage.getItem('gdrive_real_folder_id') || null;
     
     const banner = document.getElementById('decoyInspectionBanner');
     if (banner) banner.style.display = 'none';
