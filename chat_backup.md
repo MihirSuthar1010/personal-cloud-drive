@@ -1,6 +1,6 @@
 # 💾 AURA's Private Locker - Complete Chat Backup
 
-*Backup generated on: 2026-10-29 21:45:16*
+*Backup generated on: 2026-10-29 21:48:58*
 *This file contains the complete chronological conversation history between User (Clack) and Assistant (cook45).*
 *Note: Any sensitive Google API credentials (Client ID, Client Secret, Refresh Token) have been automatically redacted for security.*
 
@@ -7166,5 +7166,47 @@ Ab tu **[auralocker.vercel.app](https://auralocker.vercel.app)** par Ghost Vault
 ### 👤 User (2026-10-29 16:12:13)
 
 > ok ab jo tumne decoy vala banaya hai vo ekdam kam kar raha hai 2 no password but ye tabhi kam karta hai jab mai crome ka page refrech karta hu tab man lo maine new tab me web kholi fir real pass se login kiya to real file aai ok fir maine log out kiya or facke pass se khola fir bhi real file aai ok fir maine real pass se logon kiya to real file aai but fack pass se kiya tab bhi real file hi aai but real pass se login karke ghost vault me jake jab manage decoy file kiya tab mai fack file me ja paya ok ab mai fack file me aa gaya or maine log out kar diya or maine vapis same real pass se login kiya to same fack file vala hi khula iska matlab mai jisme bhi rehta hu fack ho ya real ho bar bar bina crome ke page ko refrech kiya logout karke pass change karke login karta hu to jo last tile fcke file ya real file holi hogina same dusri bar vo hi khulta hai chahe bhalehi pass fack ka ho ya real ho . but jab mai page refrech karke dono pass se login karta hu to ekdam complet chalta hai fack pass se fack or real pass se real to ye fix ho sakta hai kya ?
+
+---
+
+### 🤖 cook45 / Assistant (2026-10-29 16:15:30)
+
+Ekdam pakad liya tune Clack! Lafda bilkul clear tha aur isko **100% permanently fix** kar diya hai.
+
+---
+
+### Asal me bug kya tha (The Root Cause):
+1. **Memory Me Purani Folder ID Chipakna:**
+   * Jab tu Logout karta tha, toh JavaScript memory ke andar `currentFolderId` variable `null` nahi ho raha tha. Wo purane khule hue folder ki ID pakad ke RAM me baitha rehta tha.
+2. **Auto-Login Ka Locha (`attemptSilentLogin`):**
+   * Jab tu login screen par password type karta hai, toh 600ms ke baad hamara **automatic typing auto-login** trigger ho jata hai.
+   * Us auto-login function ke andar folder ID re-calculate karne ka logic hi missing tha! Wo direct purani memory wali `currentFolderId` ko utha kar `fetchFiles()` chala deta tha.
+   * Isliye jab tu Chrome refresh (`F5`) karta tha, RAM clean ho jati thi aur sahi folder khulta tha — lekin bina refresh kiye wo purana ID hi ghumata rehta tha!
+
+---
+
+### Humne kya fix kiya (`93e5307`):
+
+1. **Logout Par Full Memory & DOM Wipe:**
+   * `handleLogout()` ke andar ab `currentFolderId = null`, `allFiles = []`, table rows, aur password input ko 100% deep-clean wipe kar diya hai. Koi purana ghost state bachta hi nahi.
+2. **Unified Login Engine:**
+   * Typing auto-login (`attemptSilentLogin`) aur submit button dono ko ek hi single bulletproof engine me bind kar diya hai. Chahe Enter dabao ya auto-login ho — wo strictly check karega:
+     * **Decoy Pass (`000000`):** Strictly load karega `Mihir_Decoy_Vault`.
+     * **Real Pass (`10102004`):** Strictly load karega `Mihir_Privet_Cloud`.
+3. **Dedicated Folder Caching:**
+   * Real folder ID aur Decoy folder ID dono ko alag-alag keys (`aura_real_folder_id` aur `aura_decoy_folder_id`) me store kar diya hai. Ab bina page refresh kiye bhi 1 millisecond me instant switch hoga bina kisi mix-up ke!
+4. **Chat Backup Synced:**
+   * **`chat_backup.md`** ko bhi freshly update karke GitHub par push kar diya hai.
+
+---
+
+Vercel par naya build deploy ho chuka hai. 
+Ab ek baar **[auralocker.vercel.app](https://auralocker.vercel.app)** kholo, aur **bina page refresh kiye** 10 baar Real aur Fake password se login-logout karke check kar — ab har bar instantly sahi vault khulega!
+
+---
+
+### 👤 User (2026-10-29 16:18:49)
+
+> ekno yar ho gaya ekdam perfect
 
 ---
