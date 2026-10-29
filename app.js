@@ -414,6 +414,12 @@ function getFileTypeConfig(mimeType, name) {
     if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || ['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
         return { icon: 'fa-solid fa-box-archive', cssClass: 'icon-archive' };
     }
+    if (['bat', 'cmd', 'ps1', 'sh', 'vbs'].includes(ext)) {
+        return { icon: 'fa-solid fa-terminal', cssClass: 'icon-code' };
+    }
+    if (['exe', 'msi', 'dll', 'bin', 'iso'].includes(ext)) {
+        return { icon: 'fa-solid fa-microchip', cssClass: 'icon-archive' };
+    }
     if (mimeType.includes('text') || ['txt', 'md', 'html', 'css', 'js', 'json', 'py', 'cpp', 'c', 'h'].includes(ext)) {
         return { icon: 'fa-solid fa-code', cssClass: 'icon-code' };
     }
@@ -526,27 +532,49 @@ async function runUploadFlow(transferId) {
     
     await ensureValidToken();
     
+    // Auto-detect and sanitize MIME type for ANY format (raw binaries, scripts, archives)
+    let uploadMimeType = transfer.file.type || 'application/octet-stream';
+    const ext = transfer.fileName.split('.').pop().toLowerCase();
+    if (['bat', 'cmd', 'ps1', 'sh', 'vbs', 'exe', 'msi', 'dll', '7z', 'rar', 'bin', 'iso'].includes(ext)) {
+        uploadMimeType = 'application/octet-stream';
+    }
+
+    // Ensure target folder exists
+    if (!currentFolderId) {
+        await initializeCloudFolder();
+    }
+
     // Step 1: Initiate session if not already done
     if (!transfer.uploadUrl) {
-        updateTransferProgressUI(transferId, 0, `<i class="fa-solid fa-spinner fa-spin"></i> Initializing Gate...`);
+        updateTransferProgressUI(transferId, 0, `<span class="transfer-pulse-dot"></span> Initializing Gate...`);
         
         const metadata = {
             name: transfer.fileName,
             parents: [currentFolderId]
         };
         
-        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json; charset=UTF-8',
-                'X-Upload-Content-Type': transfer.file.type || 'application/octet-stream',
+                'X-Upload-Content-Type': uploadMimeType,
                 'X-Upload-Content-Length': transfer.size
             },
             body: JSON.stringify(metadata)
         });
         
-        if (!response.ok) throw new Error("Google initiation failed");
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Token expired: silently refresh and retry initiation
+                const savedUser = sessionStorage.getItem('custom_username');
+                const savedPass = sessionStorage.getItem('custom_password');
+                if (savedUser && savedPass) {
+                    await refreshAccessToken(savedUser, savedPass);
+                }
+            }
+            throw new Error(`Google initiation failed (${response.status})`);
+        }
         
         transfer.uploadUrl = response.headers.get('Location');
         if (!transfer.uploadUrl) throw new Error("Google did not return upload session URL");
@@ -554,7 +582,8 @@ async function runUploadFlow(transferId) {
     
     if (transfer.paused || transfer.canceled) return;
     
-    updateTransferProgressUI(transferId, Math.round((transfer.offset / transfer.size) * 100), `<i class="fa-solid fa-arrow-up-from-bracket"></i> Uploading...`);
+    const initialPercent = Math.min(99, Math.round((transfer.offset / transfer.size) * 100));
+    updateTransferProgressUI(transferId, initialPercent, `<span class="transfer-pulse-dot"></span> Uploading...`);
     
     await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -562,20 +591,22 @@ async function runUploadFlow(transferId) {
         
         xhr.open('PUT', transfer.uploadUrl, true);
         xhr.setRequestHeader('Content-Range', `bytes ${transfer.offset}-${transfer.size - 1}/${transfer.size}`);
-        xhr.setRequestHeader('Content-Type', transfer.file.type || 'application/octet-stream');
+        xhr.setRequestHeader('Content-Type', uploadMimeType);
         
         xhr.upload.onprogress = (e) => {
             if (transfer.paused || transfer.canceled) return;
             if (e.lengthComputable) {
                 const uploadedBytes = transfer.offset + e.loaded;
                 const percent = Math.min(99, Math.round((uploadedBytes / transfer.size) * 100));
-                updateTransferProgressUI(transferId, percent, `<i class="fa-solid fa-arrow-up-from-bracket"></i> Uploading...`);
+                const loadedStr = formatBytes(uploadedBytes);
+                const totalStr = formatBytes(transfer.size);
+                updateTransferProgressUI(transferId, percent, `<span class="transfer-pulse-dot"></span> Uploading (${loadedStr} / ${totalStr})`);
             }
         };
         
         xhr.onload = () => {
             if (xhr.status === 200 || xhr.status === 201) {
-                updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> Completed`);
+                updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: #10B981;"></i> Complete`);
                 playTransferSound('success');
                 showToast(`Uploaded successfully: ${transfer.fileName}`, "success");
                 setTimeout(() => {
@@ -750,7 +781,7 @@ async function downloadFolderAsZip(folderId, folderName) {
             updateTransferProgressUI(transferId, currentPercent, `<i class="fa-solid fa-arrow-down"></i> [${i + 1}/${filesList.length}] ${subFile.name}`);
             
             await ensureValidToken();
-            let fileUrl = `https://www.googleapis.com/drive/v3/files/${subFile.id}?alt=media&acknowledgeAbuse=true`;
+            let fileUrl = `https://www.googleapis.com/drive/v3/files/${subFile.id}?alt=media&acknowledgeAbuse=true&supportsAllDrives=true`;
             let finalPath = subFile.relativePath;
 
             if (subFile.mimeType && googleMimeTypeExports[subFile.mimeType]) {
@@ -808,6 +839,7 @@ async function downloadFile(fileId) {
     let fileName = file ? file.name : "download";
     const mimeType = file ? file.mimeType : "";
     const fileSize = file && file.size ? parseInt(file.size) : 0;
+    const webContentLink = file ? file.webContentLink : null;
     
     if (mimeType === 'application/vnd.google-apps.folder') {
         downloadFolderAsZip(fileId, fileName);
@@ -822,6 +854,7 @@ async function downloadFile(fileId) {
         fileId: fileId,
         mimeType: mimeType,
         size: fileSize,
+        webContentLink: webContentLink,
         offset: 0,
         paused: false,
         canceled: false,
@@ -836,12 +869,12 @@ async function runDownloadFlow(transferId) {
     const transfer = activeTransfers[transferId];
     if (!transfer || transfer.canceled || transfer.paused) return;
     
-    updateTransferProgressUI(transferId, 0, `<i class="fa-solid fa-arrow-down"></i> Connecting...`);
+    updateTransferProgressUI(transferId, 0, `<span class="transfer-pulse-dot"></span> Connecting...`);
     
     try {
         await ensureValidToken();
         
-        let url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}?alt=media&acknowledgeAbuse=true`;
+        let url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}?alt=media&acknowledgeAbuse=true&supportsAllDrives=true`;
         
         const googleMimeTypeExports = {
             'application/vnd.google-apps.document': {
@@ -866,10 +899,22 @@ async function runDownloadFlow(transferId) {
         
         if (isWorkspace) {
             const exportConfig = googleMimeTypeExports[transfer.mimeType];
-            url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}/export?mimeType=${encodeURIComponent(exportConfig.mime)}`;
+            url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}/export?mimeType=${encodeURIComponent(exportConfig.mime)}&supportsAllDrives=true`;
             if (!transfer.fileName.toLowerCase().endsWith('.' + exportConfig.ext)) {
                 transfer.fileName = `${transfer.fileName}.${exportConfig.ext}`;
             }
+        }
+
+        // For massive binary files (> 80MB), bypass in-memory XHR blob buffering to prevent RAM exhaustion
+        if (!isWorkspace && transfer.size > 80 * 1024 * 1024) {
+            updateTransferProgressUI(transferId, 50, `<span class="transfer-pulse-dot"></span> Streaming large file...`);
+            await triggerNativeDownload(transfer.fileId, transfer.fileName, transfer.mimeType, transfer.webContentLink);
+            updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: #10B981;"></i> Streamed to Browser`);
+            playTransferSound('success');
+            setTimeout(() => {
+                removeTransfer(transferId);
+            }, 2500);
+            return;
         }
 
         await new Promise((resolve, reject) => {
@@ -885,15 +930,17 @@ async function runDownloadFlow(transferId) {
                 const totalBytes = transfer.size || e.total || 0;
                 if (totalBytes > 0) {
                     const percent = Math.min(99, Math.round((e.loaded / totalBytes) * 100));
-                    updateTransferProgressUI(transferId, percent, `<i class="fa-solid fa-arrow-down"></i> Downloading (${percent}%)...`);
+                    const loadedStr = formatBytes(e.loaded);
+                    const totalStr = formatBytes(totalBytes);
+                    updateTransferProgressUI(transferId, percent, `<span class="transfer-pulse-dot"></span> Downloading (${loadedStr} / ${totalStr})`);
                 } else {
-                    updateTransferProgressUI(transferId, 50, `<i class="fa-solid fa-arrow-down"></i> Downloading...`);
+                    updateTransferProgressUI(transferId, 50, `<span class="transfer-pulse-dot"></span> Downloading...`);
                 }
             };
             
-            xhr.onload = () => {
+            xhr.onload = async () => {
                 if (xhr.status === 200 || xhr.status === 206) {
-                    updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i> Completed`);
+                    updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: #10B981;"></i> Complete`);
                     playTransferSound('success');
                     
                     const blob = xhr.response;
@@ -911,8 +958,16 @@ async function runDownloadFlow(transferId) {
                     showToast(`Download complete: ${transfer.fileName}`, "success");
                     setTimeout(() => {
                         removeTransfer(transferId);
-                    }, 1500);
+                    }, 2000);
                     resolve();
+                } else if (xhr.status === 401) {
+                    console.warn("Token expired during download, refreshing...");
+                    const savedUser = sessionStorage.getItem('custom_username');
+                    const savedPass = sessionStorage.getItem('custom_password');
+                    if (savedUser && savedPass) {
+                        await refreshAccessToken(savedUser, savedPass);
+                    }
+                    reject(new Error(`Token expired (HTTP 401)`));
                 } else {
                     reject(new Error(`Google API Status ${xhr.status}: ${xhr.statusText}`));
                 }
@@ -930,15 +985,21 @@ async function runDownloadFlow(transferId) {
         });
         
     } catch (err) {
-        console.error("Download flow failed:", err);
+        console.warn("XHR download stream encountered issue, initiating bulletproof fallback cascade:", err);
         if (transfer && !transfer.paused && !transfer.canceled) {
-            showToast(`Download failed: ${transfer.fileName}. Attempting direct download...`, "warning");
+            updateTransferProgressUI(transferId, 85, `<span class="transfer-pulse-dot"></span> Direct streaming to browser...`);
             try {
-                triggerNativeDownload(transfer.fileId, transfer.fileName, transfer.mimeType);
+                await triggerNativeDownload(transfer.fileId, transfer.fileName, transfer.mimeType, transfer.webContentLink);
+                updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: #10B981;"></i> Complete`);
+                playTransferSound('success');
+                showToast(`Downloaded: ${transfer.fileName}`, "success");
             } catch (fallbackErr) {
+                console.error("All download streams failed:", fallbackErr);
                 showToast(`Download failed: ${transfer.fileName}`, "error");
             }
-            removeTransfer(transferId);
+            setTimeout(() => {
+                removeTransfer(transferId);
+            }, 2500);
         }
     }
 }
@@ -1319,9 +1380,10 @@ function renderTransferItem(id, name, type, size) {
     const list = document.getElementById('transfersList');
     if (!list) return;
     
-    const typeLabel = type === 'upload' ? 'Upload Gate' : 'Download Gate';
-    const typeIcon = type === 'upload' ? 'fa-arrow-up-from-bracket' : 'fa-arrow-down';
+    const typeLabel = type === 'upload' ? 'Upload' : 'Download';
+    const typeIcon = type === 'upload' ? 'arrow-up' : 'arrow-down';
     const typeClass = type;
+    const fileCfg = getFileTypeConfig('', name);
     
     let item = document.getElementById(`transfer-${id}`);
     if (!item) {
@@ -1332,27 +1394,39 @@ function renderTransferItem(id, name, type, size) {
     
     item.className = `transfer-item active ${typeClass}`;
     item.innerHTML = `
-        <div class="transfer-meta">
-            <div class="transfer-info">
-                <div class="transfer-name" title="${name}">${name}</div>
-                <div class="transfer-status-label" id="status-label-${id}">
-                    <i class="fa-solid fa-${typeIcon}"></i> ${typeLabel} (${formatBytes(size)})
+        <div class="transfer-card-inner">
+            <div class="transfer-top-row">
+                <div class="transfer-file-badge ${fileCfg.cssClass}">
+                    <i class="${fileCfg.icon}"></i>
+                </div>
+                <div class="transfer-main-meta">
+                    <div class="transfer-filename" title="${name}">${name}</div>
+                    <div class="transfer-subinfo">
+                        <span class="transfer-type-chip ${type}">
+                            <i class="fa-solid fa-${typeIcon}"></i> ${typeLabel}
+                        </span>
+                        <span class="transfer-dot-sep">•</span>
+                        <span class="transfer-size-chip">${formatBytes(size)}</span>
+                    </div>
+                </div>
+                <div class="transfer-actions">
+                    <button class="btn-transfer-action btn-pause-resume" id="btn-pause-${id}" onclick="toggleTransfer('${id}')" title="Pause">
+                        <i class="fa-solid fa-pause"></i>
+                    </button>
+                    <button class="btn-transfer-action btn-cancel" onclick="cancelTransfer('${id}')" title="Cancel">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
             </div>
-            <div class="transfer-actions">
-                <button class="btn-transfer-action btn-pause-resume" id="btn-pause-${id}" onclick="toggleTransfer('${id}')" title="Pause">
-                    <i class="fa-solid fa-pause"></i>
-                </button>
-                <button class="btn-transfer-action btn-cancel" onclick="cancelTransfer('${id}')" title="Cancel">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        </div>
-        <div class="transfer-progress-container">
-            <div class="transfer-progress-bar">
+            <div class="transfer-progress-track">
                 <div class="transfer-progress-fill" id="fill-${id}" style="width: 0%"></div>
             </div>
-            <div class="transfer-percent" id="percent-${id}">0%</div>
+            <div class="transfer-bottom-row">
+                <div class="transfer-status-text" id="status-label-${id}">
+                    <span class="transfer-pulse-dot"></span> Starting...
+                </div>
+                <div class="transfer-percentage" id="percent-${id}">0%</div>
+            </div>
         </div>
     `;
     updateTransfersCardVisibility();
@@ -1362,11 +1436,16 @@ function updateTransferProgressUI(id, percent, statusText = '') {
     const fill = document.getElementById(`fill-${id}`);
     const percentEl = document.getElementById(`percent-${id}`);
     const statusLabel = document.getElementById(`status-label-${id}`);
+    const item = document.getElementById(`transfer-${id}`);
     
     if (fill) fill.style.width = `${percent}%`;
     if (percentEl) percentEl.textContent = `${percent}%`;
     if (statusText && statusLabel) {
         statusLabel.innerHTML = statusText;
+    }
+    if (percent >= 100 && item) {
+        item.classList.remove('active');
+        item.classList.add('completed');
     }
 }
 
@@ -1384,7 +1463,7 @@ function setTransferPausedUI(id, isPaused) {
         btn.innerHTML = `<i class="fa-solid fa-play"></i>`;
         btn.title = "Resume";
         if (statusLabel) {
-            statusLabel.innerHTML = `<i class="fa-solid fa-pause" style="color: #f59e0b;"></i> Gate Paused`;
+            statusLabel.innerHTML = `<i class="fa-solid fa-pause" style="color: #f59e0b;"></i> Transfer Paused`;
         }
     } else {
         item.classList.remove('paused');
@@ -1394,9 +1473,9 @@ function setTransferPausedUI(id, isPaused) {
         btn.title = "Pause";
         const transfer = activeTransfers[id];
         if (transfer && statusLabel) {
-            const icon = transfer.type === 'upload' ? 'fa-arrow-up-from-bracket' : 'fa-arrow-down';
+            const icon = transfer.type === 'upload' ? 'arrow-up' : 'arrow-down';
             const typeLabel = transfer.type === 'upload' ? 'Uploading...' : 'Downloading...';
-            statusLabel.innerHTML = `<i class="fa-solid fa-${icon}"></i> ${typeLabel}`;
+            statusLabel.innerHTML = `<span class="transfer-pulse-dot"></span> ${typeLabel}`;
         }
     }
 }
@@ -1504,71 +1583,38 @@ function removeTransfer(id) {
     removeTransferItemUI(id);
 }
 
-async function triggerNativeDownload(fileId, fileName, mimeType) {
+async function triggerNativeDownload(fileId, fileName, mimeType, webContentLink = null) {
     try {
         await ensureValidToken();
-        showToast(`Preparing download: ${fileName}...`, "info");
         
-        let url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&acknowledgeAbuse=true`;
-        const googleMimeTypeExports = {
-            'application/vnd.google-apps.document': { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' },
-            'application/vnd.google-apps.spreadsheet': { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ext: 'xlsx' },
-            'application/vnd.google-apps.presentation': { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ext: 'pptx' },
-            'application/vnd.google-apps.drawing': { mime: 'image/png', ext: 'png' }
-        };
-
-        if (mimeType && googleMimeTypeExports[mimeType]) {
-            const exportConfig = googleMimeTypeExports[mimeType];
-            url = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(exportConfig.mime)}`;
-            if (!fileName.toLowerCase().endsWith('.' + exportConfig.ext)) {
-                fileName = `${fileName}.${exportConfig.ext}`;
-            }
-        }
-
-        const res = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
-        
-        if (!res.ok) {
-            // If Google API returns 403 (e.g. large archive/executable virus scan restriction), fallback to direct Google download link
-            if (res.status === 403 || res.status === 401) {
-                console.warn(`Direct stream blocked with status ${res.status}. Falling back to Google Drive direct export download...`);
-                const directDriveUrl = `https://drive.google.com/uc?id=${fileId}&export=download&confirm=t`;
-                const a = document.createElement('a');
-                a.href = directDriveUrl;
-                a.target = '_blank';
-                a.rel = 'noopener noreferrer';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                showToast(`Started direct download: ${fileName}`, "success");
-                return;
-            }
-            throw new Error(`Google API returned status ${res.status}`);
-        }
-        
-        const blob = await res.blob();
-        const downloadUrl = URL.createObjectURL(blob);
+        // Priority 1: Direct Google API authenticated download URL with acknowledgeAbuse=true & supportsAllDrives=true
+        // This streams directly to the browser with ZERO memory buffer issues for files of ANY size or format (.7z, .zip, .bat, .exe)
+        const apiStreamUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&acknowledgeAbuse=true&supportsAllDrives=true&access_token=${encodeURIComponent(accessToken)}`;
         
         const a = document.createElement('a');
-        a.href = downloadUrl;
+        a.href = apiStreamUrl;
         a.download = fileName;
-        a.style.display = 'none';
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
-        
-        showToast(`Downloaded: ${fileName}`, "success");
+        setTimeout(() => {
+            if (a.parentNode) a.parentNode.removeChild(a);
+        }, 1500);
+        return;
     } catch (err) {
-        console.error("Direct download failed:", err);
-        try {
-            const directDriveUrl = `https://drive.google.com/uc?id=${fileId}&export=download&confirm=t`;
-            window.open(directDriveUrl, '_blank');
-            showToast(`Opened download tab for: ${fileName}`, "info");
-        } catch (e) {
-            showToast(`Download failed: ${err.message || "Network error"}`, "error");
-        }
+        console.error("Direct API download stream failed, falling back to Google export link:", err);
+        // Priority 2: Google webContentLink / uc direct download link
+        const directUrl = webContentLink || `https://drive.google.com/uc?id=${fileId}&export=download&confirm=t&uuid=${Date.now()}`;
+        const a = document.createElement('a');
+        a.href = directUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            if (a.parentNode) a.parentNode.removeChild(a);
+        }, 1500);
     }
 }
 

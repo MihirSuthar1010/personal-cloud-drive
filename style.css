@@ -755,80 +755,268 @@ input, button, select, textarea {
 }
 
 /* ==========================================================================
-   TRANSFERS PANEL
+   TRANSFERS PANEL (ULTRA-MODERN SAAS WHITE & RED)
    ========================================================================== */
 .transfers-card {
-    padding: 18px;
+    padding: 16px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
 }
 
 .transfers-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .transfers-header h3 {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--text-primary);
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
+    letter-spacing: -0.01em;
 }
 
 .transfers-header h3 i {
     color: var(--accent-red);
+    font-size: 13px;
 }
 
 .active-count-badge {
-    background: var(--accent-red-soft);
+    background: #FEF2F2;
     color: var(--accent-red);
     font-size: 11px;
     font-weight: 700;
     padding: 2px 8px;
-    border-radius: 12px;
-    border: 1px solid var(--accent-red-border);
+    border-radius: 9999px;
+    border: 1px solid #FEE2E2;
 }
 
 .transfers-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: 240px;
+    gap: 10px;
+    max-height: 280px;
     overflow-y: auto;
+    padding-right: 2px;
 }
 
 .transfer-item {
-    padding: 10px 12px;
-    background: var(--bg-surface-elevated);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    background: #FAFAFA;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
 
-.transfer-info {
+.transfer-item:hover {
+    border-color: #CBD5E1;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.transfer-item.active {
+    border-left: 3px solid var(--accent-red);
+}
+
+.transfer-item.paused {
+    border-left: 3px solid #F59E0B;
+}
+
+.transfer-item.completed {
+    border-left: 3px solid #10B981;
+}
+
+.transfer-card-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.transfer-top-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.transfer-file-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    background: #FEF2F2;
+    color: var(--accent-red);
+    border: 1px solid #FEE2E2;
+}
+
+.transfer-main-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.transfer-filename {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.transfer-subinfo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.transfer-dot-sep {
+    color: #CBD5E1;
+    font-size: 10px;
+}
+
+.transfer-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+
+.transfer-type-chip.download {
+    color: var(--accent-red);
+}
+
+.transfer-type-chip.upload {
+    color: #2563EB;
+}
+
+.transfer-size-chip {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+.transfer-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.btn-transfer-action {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #64748B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.15s ease;
+    padding: 0;
+}
+
+.btn-transfer-action:hover {
+    background: #F1F5F9;
+    color: var(--text-primary);
+    border-color: #CBD5E1;
+    transform: scale(1.06);
+}
+
+.btn-transfer-action.btn-pause-resume:hover {
+    background: #FEF3C7;
+    border-color: #FCD34D;
+    color: #D97706;
+}
+
+.btn-transfer-action.btn-cancel:hover {
+    background: #FEE2E2;
+    border-color: #FCA5A5;
+    color: var(--accent-red);
+}
+
+/* Progress Track & Fill */
+.transfer-progress-track {
+    width: 100%;
+    height: 6px;
+    background: #E2E8F0;
+    border-radius: 9999px;
+    overflow: hidden;
+    position: relative;
+}
+
+.transfer-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #DC2626 0%, #EF4444 100%);
+    border-radius: 9999px;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transfer-item.paused .transfer-progress-fill {
+    background: #F59E0B;
+}
+
+.transfer-item.completed .transfer-progress-fill {
+    background: #10B981;
+}
+
+/* Bottom info */
+.transfer-bottom-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 12px;
+    font-size: 11px;
 }
 
-.transfer-name {
-    color: var(--text-primary);
-    font-weight: 600;
-    max-width: 65%;
+.transfer-status-text {
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    max-width: 80%;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
-.transfer-status {
-    font-size: 11px;
-    color: var(--text-muted);
+.transfer-pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-red);
+    display: inline-block;
+    animation: transferPulse 1.4s infinite ease-in-out;
+}
+
+@keyframes transferPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.35); opacity: 0.35; }
+}
+
+.transfer-percentage {
     font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 11.5px;
 }
 
 /* ==========================================================================
