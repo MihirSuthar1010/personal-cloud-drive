@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AURA Cloud | Personal Cloud Storage</title>
+    <title id="appPageTitle">Calculator</title>
     <!-- Google Fonts for modern typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +15,49 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
+    <!-- Chameleon Calculator Disguise Container (Default Camouflage) -->
+    <div id="calculatorDisguise" class="calc-disguise-overlay">
+        <div class="calc-card">
+            <div class="calc-header">
+                <span class="calc-title"><i class="fa-solid fa-calculator"></i> Calculator</span>
+                <div class="calc-window-controls">
+                    <span class="calc-dot dot-yellow"></span>
+                    <span class="calc-dot dot-green"></span>
+                    <span class="calc-dot dot-red"></span>
+                </div>
+            </div>
+            <div class="calc-display-wrap">
+                <div class="calc-history" id="calcHistory">&nbsp;</div>
+                <div class="calc-screen" id="calcScreen">0</div>
+            </div>
+            <div class="calc-keypad">
+                <button class="calc-btn btn-func" data-action="clear">AC</button>
+                <button class="calc-btn btn-func" data-action="plusminus">±</button>
+                <button class="calc-btn btn-func" data-action="percent">%</button>
+                <button class="calc-btn btn-op" data-action="op" data-val="/">÷</button>
+
+                <button class="calc-btn btn-num" data-action="num" data-val="7">7</button>
+                <button class="calc-btn btn-num" data-action="num" data-val="8">8</button>
+                <button class="calc-btn btn-num" data-action="num" data-val="9">9</button>
+                <button class="calc-btn btn-op" data-action="op" data-val="*">×</button>
+
+                <button class="calc-btn btn-num" data-action="num" data-val="4">4</button>
+                <button class="calc-btn btn-num" data-action="num" data-val="5">5</button>
+                <button class="calc-btn btn-num" data-action="num" data-val="6">6</button>
+                <button class="calc-btn btn-op" data-action="op" data-val="-">−</button>
+
+                <button class="calc-btn btn-num" data-action="num" data-val="1">1</button>
+                <button class="calc-btn btn-num" data-action="num" data-val="2">2</button>
+                <button class="calc-btn btn-num" data-action="num" data-val="3">3</button>
+                <button class="calc-btn btn-op" data-action="op" data-val="+">+</button>
+
+                <button class="calc-btn btn-num btn-zero" data-action="num" data-val="0">0</button>
+                <button class="calc-btn btn-num" data-action="dot">.</button>
+                <button class="calc-btn btn-op btn-equals" data-action="equals">=</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Background Fixed AURA Cloud Watermark Logo -->
     <div class="bg-watermark">
         <svg viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -42,6 +85,10 @@
             </div>
 
             <div class="user-profile" id="userProfile" style="display: none;">
+                <button id="bossKeyBtn" class="btn btn-boss-key" onclick="toggleCalculatorDisguise(true)" title="Boss Key: Instant Disguise (Esc)">
+                    <i class="fa-solid fa-calculator"></i>
+                    <span>Disguise</span>
+                </button>
                 <button id="ghostVaultBtn" class="btn btn-ghost-vault" onclick="openGhostVaultModal()" title="Ghost Vault Settings" style="display: none;">
                     <i class="fa-solid fa-user-secret"></i>
                     <span>Ghost Vault</span>

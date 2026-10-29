@@ -41,6 +41,7 @@ const searchInput = document.getElementById('searchInput');
    ========================================== */
 
 window.onload = function () {
+    initCalculatorDisguise();
     setupEventListeners();
     checkExistingSession();
 };
@@ -2024,5 +2025,226 @@ function exitDecoyInspection() {
         fetchFiles();
     } else {
         initializeCloudFolder();
+    }
+}
+
+
+/* ==========================================
+   CHAMELEON CALCULATOR DISGUISE (BOSS KEY)
+   ========================================== */
+
+let calcCurrent = '0';
+let calcPrev = null;
+let calcOperator = null;
+let calcResetOnNext = false;
+let isDisguiseActive = true;
+
+function initCalculatorDisguise() {
+    const disguiseOverlay = document.getElementById('calculatorDisguise');
+    if (!disguiseOverlay) return;
+
+    // Check if user already unlocked in this session
+    const alreadyUnlocked = sessionStorage.getItem('aura_unlocked') === 'true';
+    if (alreadyUnlocked) {
+        disguiseOverlay.classList.add('calc-hidden');
+        document.title = "AURA Cloud";
+        isDisguiseActive = false;
+    } else {
+        disguiseOverlay.classList.remove('calc-hidden');
+        document.title = "Calculator";
+        isDisguiseActive = true;
+    }
+
+    // Attach click listeners to all calculator buttons
+    const buttons = disguiseOverlay.querySelectorAll('.calc-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const action = btn.getAttribute('data-action');
+            const val = btn.getAttribute('data-val');
+            handleCalculatorInput(action, val);
+        });
+    });
+
+    // Keyboard listener for Calculator input & Boss Key (Esc)
+    window.addEventListener('keydown', handleCalculatorKeyboard);
+}
+
+function handleCalculatorKeyboard(e) {
+    // Boss Key: Pressing Escape anywhere immediately morphs to Calculator
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        toggleCalculatorDisguise(true);
+        return;
+    }
+
+    // If calculator disguise is not visible, don't intercept standard typing
+    if (!isDisguiseActive) return;
+
+    if (e.key >= '0' && e.key <= '9') {
+        handleCalculatorInput('num', e.key);
+    } else if (e.key === '.') {
+        handleCalculatorInput('dot');
+    } else if (e.key === '+' || e.key === '-' || e.key === '*' || e.key === '/') {
+        handleCalculatorInput('op', e.key);
+    } else if (e.key === 'Enter' || e.key === '=') {
+        e.preventDefault();
+        handleCalculatorInput('equals');
+    } else if (e.key === 'Backspace') {
+        handleCalculatorBackspace();
+    } else if (e.key === 'c' || e.key === 'C') {
+        handleCalculatorInput('clear');
+    }
+}
+
+function handleCalculatorInput(action, val) {
+    const screen = document.getElementById('calcScreen');
+    const history = document.getElementById('calcHistory');
+    if (!screen) return;
+
+    if (action === 'num') {
+        if (calcCurrent === '0' || calcResetOnNext) {
+            calcCurrent = val;
+            calcResetOnNext = false;
+        } else {
+            if (calcCurrent.length < 16) {
+                calcCurrent += val;
+            }
+        }
+    } else if (action === 'dot') {
+        if (calcResetOnNext) {
+            calcCurrent = '0.';
+            calcResetOnNext = false;
+        } else if (!calcCurrent.includes('.')) {
+            calcCurrent += '.';
+        }
+    } else if (action === 'clear') {
+        calcCurrent = '0';
+        calcPrev = null;
+        calcOperator = null;
+        calcResetOnNext = false;
+        if (history) history.innerHTML = '&nbsp;';
+    } else if (action === 'plusminus') {
+        if (calcCurrent !== '0') {
+            calcCurrent = calcCurrent.startsWith('-') ? calcCurrent.slice(1) : '-' + calcCurrent;
+        }
+    } else if (action === 'percent') {
+        const num = parseFloat(calcCurrent);
+        if (!isNaN(num)) {
+            calcCurrent = String(num / 100);
+        }
+    } else if (action === 'op') {
+        if (calcOperator && !calcResetOnNext && calcPrev !== null) {
+            executeCalculation();
+        }
+        calcPrev = parseFloat(calcCurrent);
+        calcOperator = val;
+        calcResetOnNext = true;
+        if (history) history.textContent = `${calcPrev} ${getOpSymbol(val)}`;
+    } else if (action === 'equals') {
+        // ------------------------------------------
+        // SECRET PASSCODE CHECK (MASTER vs DECOY)
+        // ------------------------------------------
+        const secretCandidate = calcCurrent.replace(/[^0-9a-zA-Z]/g, '');
+        
+        // 1. Check Master Password (10102004)
+        if (secretCandidate === '10102004') {
+            unlockLockerFromCalculator('MIHIR', '10102004');
+            return;
+        }
+        
+        // 2. Check Decoy Password (000000)
+        if (secretCandidate === '000000') {
+            unlockLockerFromCalculator('MIHIR', '000000');
+            return;
+        }
+
+        // Standard Math Execution
+        if (calcOperator && calcPrev !== null) {
+            if (history) history.textContent = `${calcPrev} ${getOpSymbol(calcOperator)} ${calcCurrent} =`;
+            executeCalculation();
+            calcOperator = null;
+            calcPrev = null;
+            calcResetOnNext = true;
+        }
+    }
+
+    screen.textContent = calcCurrent;
+}
+
+function handleCalculatorBackspace() {
+    const screen = document.getElementById('calcScreen');
+    if (!screen) return;
+    if (calcCurrent.length > 1) {
+        calcCurrent = calcCurrent.slice(0, -1);
+    } else {
+        calcCurrent = '0';
+    }
+    screen.textContent = calcCurrent;
+}
+
+function executeCalculation() {
+    const a = calcPrev;
+    const b = parseFloat(calcCurrent);
+    if (isNaN(a) || isNaN(b)) return;
+    let res = 0;
+    if (calcOperator === '+') res = a + b;
+    else if (calcOperator === '-') res = a - b;
+    else if (calcOperator === '*') res = a * b;
+    else if (calcOperator === '/') res = b !== 0 ? a / b : 'Error';
+
+    if (typeof res === 'number') {
+        res = Math.round(res * 100000000) / 100000000;
+        calcCurrent = String(res);
+    } else {
+        calcCurrent = res;
+    }
+}
+
+function getOpSymbol(op) {
+    if (op === '/') return '÷';
+    if (op === '*') return '×';
+    if (op === '-') return '−';
+    return '+';
+}
+
+function unlockLockerFromCalculator(username, password) {
+    const screen = document.getElementById('calcScreen');
+    const overlay = document.getElementById('calculatorDisguise');
+    if (screen) screen.textContent = "ACCESS...";
+
+    setTimeout(async () => {
+        sessionStorage.setItem('aura_unlocked', 'true');
+        isDisguiseActive = false;
+        document.title = "AURA Cloud";
+        if (overlay) overlay.classList.add('calc-hidden');
+
+        // Authenticate directly with the secret password entered
+        await handleCustomLogin(username, password);
+    }, 300);
+}
+
+function toggleCalculatorDisguise(activate) {
+    const overlay = document.getElementById('calculatorDisguise');
+    if (!overlay) return;
+
+    if (activate) {
+        overlay.classList.remove('calc-hidden');
+        document.title = "Calculator";
+        isDisguiseActive = true;
+        calcCurrent = '0';
+        calcPrev = null;
+        calcOperator = null;
+        calcResetOnNext = false;
+        const screen = document.getElementById('calcScreen');
+        const history = document.getElementById('calcHistory');
+        if (screen) screen.textContent = '0';
+        if (history) history.innerHTML = '&nbsp;';
+        sessionStorage.removeItem('aura_unlocked');
+    } else {
+        overlay.classList.add('calc-hidden');
+        document.title = "AURA Cloud";
+        isDisguiseActive = false;
+        sessionStorage.setItem('aura_unlocked', 'true');
     }
 }
