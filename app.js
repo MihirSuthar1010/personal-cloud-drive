@@ -750,7 +750,7 @@ async function downloadFolderAsZip(folderId, folderName) {
             updateTransferProgressUI(transferId, currentPercent, `<i class="fa-solid fa-arrow-down"></i> [${i + 1}/${filesList.length}] ${subFile.name}`);
             
             await ensureValidToken();
-            let fileUrl = `https://www.googleapis.com/drive/v3/files/${subFile.id}?alt=media`;
+            let fileUrl = `https://www.googleapis.com/drive/v3/files/${subFile.id}?alt=media&acknowledgeAbuse=true`;
             let finalPath = subFile.relativePath;
 
             if (subFile.mimeType && googleMimeTypeExports[subFile.mimeType]) {
@@ -841,7 +841,7 @@ async function runDownloadFlow(transferId) {
     try {
         await ensureValidToken();
         
-        let url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}?alt=media`;
+        let url = `https://www.googleapis.com/drive/v3/files/${transfer.fileId}?alt=media&acknowledgeAbuse=true`;
         
         const googleMimeTypeExports = {
             'application/vnd.google-apps.document': {
@@ -1509,7 +1509,7 @@ async function triggerNativeDownload(fileId, fileName, mimeType) {
         await ensureValidToken();
         showToast(`Preparing download: ${fileName}...`, "info");
         
-        let url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+        let url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&acknowledgeAbuse=true`;
         const googleMimeTypeExports = {
             'application/vnd.google-apps.document': { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' },
             'application/vnd.google-apps.spreadsheet': { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ext: 'xlsx' },
@@ -1529,7 +1529,23 @@ async function triggerNativeDownload(fileId, fileName, mimeType) {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         
-        if (!res.ok) throw new Error(`Google API returned status ${res.status}`);
+        if (!res.ok) {
+            // If Google API returns 403 (e.g. large archive/executable virus scan restriction), fallback to direct Google download link
+            if (res.status === 403 || res.status === 401) {
+                console.warn(`Direct stream blocked with status ${res.status}. Falling back to Google Drive direct export download...`);
+                const directDriveUrl = `https://drive.google.com/uc?id=${fileId}&export=download&confirm=t`;
+                const a = document.createElement('a');
+                a.href = directDriveUrl;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast(`Started direct download: ${fileName}`, "success");
+                return;
+            }
+            throw new Error(`Google API returned status ${res.status}`);
+        }
         
         const blob = await res.blob();
         const downloadUrl = URL.createObjectURL(blob);
@@ -1546,7 +1562,13 @@ async function triggerNativeDownload(fileId, fileName, mimeType) {
         showToast(`Downloaded: ${fileName}`, "success");
     } catch (err) {
         console.error("Direct download failed:", err);
-        showToast(`Download failed: ${err.message || "Network error"}`, "error");
+        try {
+            const directDriveUrl = `https://drive.google.com/uc?id=${fileId}&export=download&confirm=t`;
+            window.open(directDriveUrl, '_blank');
+            showToast(`Opened download tab for: ${fileName}`, "info");
+        } catch (e) {
+            showToast(`Download failed: ${err.message || "Network error"}`, "error");
+        }
     }
 }
 
