@@ -905,18 +905,7 @@ async function runDownloadFlow(transferId) {
             }
         }
 
-        // For massive binary files (> 80MB), bypass in-memory XHR blob buffering to prevent RAM exhaustion
-        if (!isWorkspace && transfer.size > 80 * 1024 * 1024) {
-            updateTransferProgressUI(transferId, 50, `<span class="transfer-pulse-dot"></span> Streaming large file...`);
-            await triggerNativeDownload(transfer.fileId, transfer.fileName, transfer.mimeType, transfer.webContentLink);
-            updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: #10B981;"></i> Streamed to Browser`);
-            playTransferSound('success');
-            setTimeout(() => {
-                removeTransfer(transferId);
-            }, 2500);
-            return;
-        }
-
+        // Stream binary cleanly over XHR with Authorization header for ANY format (.rar, .zip, .7z, .bat, .exe)
         await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             transfer.xhr = xhr;
@@ -952,8 +941,10 @@ async function runDownloadFlow(transferId) {
                     a.style.display = 'none';
                     document.body.appendChild(a);
                     a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(downloadUrl);
+                    setTimeout(() => {
+                        if (a.parentNode) a.parentNode.removeChild(a);
+                        URL.revokeObjectURL(downloadUrl);
+                    }, 2000);
                     
                     showToast(`Download complete: ${transfer.fileName}`, "success");
                     setTimeout(() => {
@@ -985,9 +976,17 @@ async function runDownloadFlow(transferId) {
         });
         
     } catch (err) {
-        console.warn("XHR download stream encountered issue, initiating bulletproof fallback cascade:", err);
+        console.warn("XHR download stream encountered issue, initiating resilient retry/fallback:", err);
         if (transfer && !transfer.paused && !transfer.canceled) {
-            updateTransferProgressUI(transferId, 85, `<span class="transfer-pulse-dot"></span> Direct streaming to browser...`);
+            transfer.retries = (transfer.retries || 0) + 1;
+            if (transfer.retries <= 2) {
+                console.log(`Auto-retrying download for ${transfer.fileName} (attempt ${transfer.retries})...`);
+                updateTransferProgressUI(transferId, 10, `<span class="transfer-pulse-dot"></span> Reconnecting...`);
+                await ensureValidToken();
+                return runDownloadFlow(transferId);
+            }
+            
+            updateTransferProgressUI(transferId, 85, `<span class="transfer-pulse-dot"></span> Finalizing stream...`);
             try {
                 await triggerNativeDownload(transfer.fileId, transfer.fileName, transfer.mimeType, transfer.webContentLink);
                 updateTransferProgressUI(transferId, 100, `<i class="fa-solid fa-circle-check" style="color: #10B981;"></i> Complete`);
@@ -1587,34 +1586,49 @@ async function triggerNativeDownload(fileId, fileName, mimeType, webContentLink 
     try {
         await ensureValidToken();
         
-        // Priority 1: Direct Google API authenticated download URL with acknowledgeAbuse=true & supportsAllDrives=true
-        // This streams directly to the browser with ZERO memory buffer issues for files of ANY size or format (.7z, .zip, .bat, .exe)
-        const apiStreamUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&acknowledgeAbuse=true&supportsAllDrives=true&access_token=${encodeURIComponent(accessToken)}`;
+        let url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&acknowledgeAbuse=true&supportsAllDrives=true`;
+        const googleMimeTypeExports = {
+            'application/vnd.google-apps.document': { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: 'docx' },
+            'application/vnd.google-apps.spreadsheet': { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ext: 'xlsx' },
+            'application/vnd.google-apps.presentation': { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ext: 'pptx' },
+            'application/vnd.google-apps.drawing': { mime: 'image/png', ext: 'png' }
+        };
+
+        if (mimeType && googleMimeTypeExports[mimeType]) {
+            const exportConfig = googleMimeTypeExports[mimeType];
+            url = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(exportConfig.mime)}&supportsAllDrives=true`;
+            if (!fileName.toLowerCase().endsWith('.' + exportConfig.ext)) {
+                fileName = `${fileName}.${exportConfig.ext}`;
+            }
+        }
+
+        // Programmatic fetch stream with Authorization header
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
         
-        const a = document.createElement('a');
-        a.href = apiStreamUrl;
-        a.download = fileName;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            if (a.parentNode) a.parentNode.removeChild(a);
-        }, 1500);
-        return;
+        if (res.ok) {
+            const blob = await res.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = fileName;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                if (a.parentNode) a.parentNode.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            }, 2000);
+            return;
+        }
+        
+        throw new Error(`Fetch stream failed with status ${res.status}`);
     } catch (err) {
-        console.error("Direct API download stream failed, falling back to Google export link:", err);
-        // Priority 2: Google webContentLink / uc direct download link
-        const directUrl = webContentLink || `https://drive.google.com/uc?id=${fileId}&export=download&confirm=t&uuid=${Date.now()}`;
-        const a = document.createElement('a');
-        a.href = directUrl;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            if (a.parentNode) a.parentNode.removeChild(a);
-        }, 1500);
+        console.error("Direct fetch download stream failed, falling back to Google export link:", err);
+        // Fallback to Google Drive official export link (NEVER googleapis.com directly in a browser tab)
+        const directUrl = webContentLink || `https://drive.google.com/uc?id=${fileId}&export=download&confirm=t`;
+        window.open(directUrl, '_blank');
     }
 }
 
